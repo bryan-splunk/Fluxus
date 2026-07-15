@@ -1,0 +1,13 @@
+cases:
+  - name: "fires when prometheusremotewrite exporter present"
+    config: |
+      exporters:
+        prometheusremotewrite:
+          endpoint: https://prometheus.example.com/api/v1/write
+    should_fire: true
+
+  - name: "silent when prometheusremotewrite absent"
+    config: |
+      exporters:
+        otlp: {}
+    should_fire: false

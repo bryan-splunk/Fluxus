@@ -1,0 +1,55 @@
+id: SEC-P1-02
+phase: security
+category: p1
+introduced: "0.0.0"
+title: "Hardcoded Credential — Unquoted or Double-Quoted password/api_key Field"
+look_for:
+  # Unquoted literal value: password: somevalue — first char is not ", ', $, #, {, or whitespace
+  - raw_pattern: "(?m)^\\s*(?:password|passwd|api_key)\\s*:\\s+[^\\s\"'$#{]\\S{3,}"
+  # Double-quoted literal value: password: "somevalue" — first char inside quotes is not $
+  - raw_pattern: "(?m)^\\s*(?:password|passwd|api_key)\\s*:\\s*\"[^$\"][^\"]{3,}\""
+migration:
+  strategy: inform_only
+  key_moves:
+    - comment_path: $.receivers
+      comment_once: true
+      comment_text: |
+        # [SEC-P1-02 SECURITY WARNING] Potential hardcoded credential detected in this config.
+        # A password or api_key field appears to contain a literal value rather than an
+        # environment variable reference. Review all credential fields in this file.
+        # Replace literal values with: ${env:YOUR_VAR_NAME}
+        # See: https://opentelemetry.io/docs/collector/configuration/#environment-variables
+  before: |
+    # Hardcoded credential examples (insecure):
+    receivers:
+      vcenter:
+        endpoint: https://vcenter.example.com
+        username: administrator@vsphere.local
+        password: Admin1234!                    # INSECURE — use ${env:VCENTER_PASSWORD}
+  after: |
+    # Secure — use environment variable references:
+    receivers:
+      vcenter:
+        endpoint: https://vcenter.example.com
+        username: administrator@vsphere.local
+        password: "${env:VCENTER_PASSWORD}"
+guidance: |
+  Review all credential fields (password, passwd, api_key) throughout the config file and
+  replace any literal values with environment variable references:
+    password: "${env:YOUR_VAR_NAME}"
+    api_key: "${env:YOUR_API_KEY}"
+
+  Check every receiver, exporter, extension, and processor block. Hardcoded credentials
+  risk exposure via source control, config dumps, log files, and the zpages endpoint.
+
+  Use your secret management tooling (HashiCorp Vault, AWS Secrets Manager, Kubernetes
+  Secrets, etc.) to inject values at runtime via environment variables.
+
+  See: https://opentelemetry.io/docs/collector/configuration/#environment-variables
+description: >-
+  Detects unquoted or double-quoted literal password or api_key values anywhere in the
+  config file. These patterns indicate a credential that has been written directly into
+  the YAML rather than referenced from an environment variable or secrets manager.
+  This is a security hygiene check — no collector version dependency. Replace all
+  literal credentials with ${env:VAR_NAME} references. This rule complements SEC-P1-01
+  (which targets single-quoted prometheus scrape_config passwords specifically).

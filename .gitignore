@@ -1,0 +1,29 @@
+# Binaries
+fluxus
+fluxus.exe
+cli.exe
+*.bak
+
+# Go build artifacts
+/bin/
+/dist/
+
+# Go test cache
+*.test
+*.out
+
+# Generated reports (committed by users, not source control)
+PreAssessment.md
+OperationalAssessment.md
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# go.sum (committed; listed here only as note — do NOT ignore)
+# go.sum
+/LocalSampleData/
+/CompletedTestRuns/
+/LocalSampleData/*
+/CompletedTestRuns/*

@@ -1,0 +1,41 @@
+id: P3-05
+category: p3
+introduced: "0.153"
+title: "jaeger Receiver — DisableRemoteSampling Gate Removed"
+look_for:
+  - path: $.receivers.jaeger
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.jaeger
+      comment_text: |
+        # UPGRADE(P3-05 v0.153): receiver.jaeger.DisableRemoteSampling feature gate removed.
+        # Remote sampling is now permanently disabled in the jaeger receiver.
+        # If this flag appears in startup args (systemd, Helm, Windows registry), remove it.
+        # If you relied on remote sampling, use tail_sampling or probabilistic_sampler instead.
+  before: |
+    # If this flag is in startup arguments, it causes a startup warning:
+    # --feature-gates=receiver.jaeger.DisableRemoteSampling
+  after: |
+    # Remove --feature-gates=receiver.jaeger.DisableRemoteSampling from all startup args.
+    # Remote sampling is now permanently disabled.
+    #
+    # If you relied on remote sampling, consider alternatives:
+    # - tail_sampling processor for head-based filtering
+    # - probabilistic_sampler processor for percentage-based sampling
+guidance: |
+  Remove the --feature-gates=receiver.jaeger.DisableRemoteSampling flag from all service
+  startup arguments (systemd unit files, launch scripts, Helm chart values, Windows
+  service registry, etc.).
+
+  Remote sampling is permanently disabled from 0.153. If you relied on remote sampling,
+  configure an alternative such as the tail_sampling processor or probabilistic sampler
+  processor for your sampling logic.
+description: >-
+  In 0.153, the receiver.jaeger.DisableRemoteSampling feature gate was removed. Remote
+  sampling is now permanently disabled in the jaeger receiver. If this flag is present in
+  startup arguments (systemd unit files, Helm chart values, Windows service registry, etc.),
+  it will cause a startup warning. Remove the flag from all startup configurations. If you
+  relied on remote sampling functionality, configure an alternative such as the tail_sampling
+  or probabilistic_sampler processor.

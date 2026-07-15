@@ -1,0 +1,49 @@
+id: P2-33
+category: p2
+introduced: "0.125"
+title: "sqlserver Receiver — computer_name/instance_name Moved to Resource Attributes"
+look_for:
+  - path: $.receivers.sqlserver
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.sqlserver
+      comment_text: |
+        # UPGRADE(P2-33 v0.125): sqlserver computer_name/instance_name moved to resource attributes.
+        # Before: attributes["computer_name"], attributes["instance_name"] (log record attributes)
+        # After:  resource.attributes["sqlserver.computer.name"] / resource.attributes["sqlserver.instance.name"]
+        # ACTION: update OTTL rules, Splunk searches, dashboards that read these from log attributes.
+    # Before 0.125 — attributes were in log record attributes:
+    # attributes["computer_name"]  (log attribute, deprecated)
+    # attributes["instance_name"]  (log attribute, deprecated)
+
+    # Example OTTL using old location:
+    # where attributes["computer_name"] == "SQLSERVER01"
+  after: |
+    # After 0.125 — attributes promoted to resource attributes:
+    # resource.attributes["sqlserver.computer.name"]  (replaces computer_name)
+    # resource.attributes["sqlserver.instance.name"]  (replaces instance_name)
+    # resource.attributes["host.name"]               (now resource attribute)
+
+    # Example OTTL using new location:
+    # where resource.attributes["sqlserver.computer.name"] == "SQLSERVER01"
+guidance: |
+  Update log parsing, OTTL rules, and dashboards to read sqlserver attributes from the
+  resource level instead of the log record level:
+
+  - OLD: attributes["computer_name"]     → NEW: resource.attributes["sqlserver.computer.name"]
+  - OLD: attributes["instance_name"]     → NEW: resource.attributes["sqlserver.instance.name"]
+  - OLD: attributes["host.name"]         → NEW: resource.attributes["host.name"]
+
+  These three attributes were promoted to resource attributes in 0.125 for both top query
+  collection and query sample collection. The old log-level attributes are deprecated.
+description: >-
+  In 0.125, three attributes in sqlserver receiver logs were promoted from log record
+  attributes to resource attributes: host.name (new resource attribute),
+  sqlserver.computer.name (replacing the deprecated computer_name log attribute), and
+  sqlserver.instance.name (replacing the deprecated instance_name log attribute). Log
+  parsing, OTTL rules, and dashboards that read computer_name or instance_name from log
+  attributes must be updated to read from resource attributes using the new names.
+see_also:
+  - P2-12

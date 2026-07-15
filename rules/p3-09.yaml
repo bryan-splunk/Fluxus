@@ -1,0 +1,66 @@
+id: P3-09
+category: p3
+introduced: "0.126"
+title: "New OTTL Functions Available Since 0.126"
+look_for:
+  - path: $.processors.transform
+    match: exists
+  - path: $.processors.filter
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.processors.transform
+      comment_text: |
+        # INFO(P3-09 v0.126-0.150): new OTTL functions available since 0.126.
+        # Coalesce(0.150), Base64Encode(0.146), IsInCIDR(0.146), Bool(0.143),
+        # delete_index(0.145), TrimPrefix/TrimSuffix(0.139) — see P3-09 for full list.
+    - comment_path: $.processors.filter
+      comment_text: |
+        # INFO(P3-09 v0.126-0.150): new OTTL functions available — Coalesce, Base64Encode, IsInCIDR, Bool, etc.
+  after: |
+    # Coalesce (0.150): first non-nil value from list
+    # set(attributes["user"],
+    #   Coalesce([attributes["user.id"], attributes["enduser.id"], "unknown"]))
+
+    # Base64Encode (0.146)
+    # set(attributes["encoded"], Base64Encode(body))
+
+    # IsInCIDR (0.146): check if IP in CIDR range
+    # where IsInCIDR(attributes["client.ip"], "10.0.0.0/8")
+
+    # Bool (0.143): convert to boolean
+    # set(attributes["flag"], Bool(attributes["flag_str"]))
+
+    # delete_index: remove item from array (0.145)
+    # delete_index(attributes["items"], 0)
+
+    # TrimPrefix / TrimSuffix (0.139)
+    # set(name, TrimPrefix(name, "prefix_"))
+guidance: |
+  These are informational — no config changes required. New OTTL functions available to
+  simplify your transform/filter processor statements:
+
+  - Coalesce (0.150): returns the first non-nil value from a list
+    set(attributes["user"], Coalesce([attributes["user.id"], attributes["enduser.id"], "unknown"]))
+
+  - Base64Encode (0.146): encode body or attribute to base64
+    set(attributes["encoded"], Base64Encode(body))
+
+  - IsInCIDR (0.146): check if an IP is in a CIDR range
+    where IsInCIDR(attributes["client.ip"], "10.0.0.0/8")
+
+  - Bool (0.143): convert a string/int to boolean
+    set(attributes["flag"], Bool(attributes["flag_str"]))
+
+  - delete_index (0.145): remove an item from an array by index
+    delete_index(attributes["items"], 0)
+
+  - TrimPrefix / TrimSuffix (0.139): trim a prefix or suffix from a string
+    set(name, TrimPrefix(name, "prefix_"))
+description: >-
+  Informational — a range of new OTTL functions became available between versions 0.126
+  and 0.150. These include Coalesce (0.150), Base64Encode (0.146), IsInCIDR (0.146),
+  Bool (0.143), delete_index (0.145), and TrimPrefix/TrimSuffix (0.139). No config change
+  is required — these are additive capabilities you can now use in transform and filter
+  processor OTTL statements.

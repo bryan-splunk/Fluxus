@@ -1,0 +1,33 @@
+cases:
+  - name: "fires when resourcedetection has attributes block and removes it"
+    config: |
+      processors:
+        resourcedetection:
+          detectors: [env]
+          attributes:
+            - key: cloud.region
+              action: insert
+              value: us-east-1
+    should_fire: true
+    apply_not_contains:
+      - "attributes:"
+
+  - name: "fires when resource_detection has attributes block and removes it"
+    config: |
+      processors:
+        resource_detection:
+          detectors: [env]
+          attributes:
+            - key: cloud.region
+              action: insert
+              value: us-east-1
+    should_fire: true
+    apply_not_contains:
+      - "attributes:"
+
+  - name: "silent when resourcedetection has no attributes block"
+    config: |
+      processors:
+        resourcedetection:
+          detectors: [env]
+    should_fire: false

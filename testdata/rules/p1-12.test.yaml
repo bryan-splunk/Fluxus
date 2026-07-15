@@ -1,0 +1,27 @@
+cases:
+  - name: "fires when kubeletstats has metrics block"
+    config: |
+      receivers:
+        kubeletstats:
+          collection_interval: 20s
+          metrics:
+            k8s.node.uptime:
+              enabled: false
+    should_fire: true
+
+  - name: "fires when kubelet_stats has metrics block"
+    config: |
+      receivers:
+        kubelet_stats:
+          collection_interval: 20s
+          metrics:
+            k8s.node.uptime:
+              enabled: false
+    should_fire: true
+
+  - name: "silent when kubelet receiver has no metrics block"
+    config: |
+      receivers:
+        kubeletstats:
+          collection_interval: 20s
+    should_fire: false

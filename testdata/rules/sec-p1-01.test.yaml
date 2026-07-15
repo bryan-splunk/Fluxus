@@ -1,0 +1,46 @@
+# SEC-P1-01 fires only when BOTH conditions hold (logic: and):
+# 1. $.receivers.prometheus exists
+# 2. raw_pattern: single-quoted password not starting with $
+cases:
+  - name: "fires when prometheus has hardcoded single-quoted password"
+    config: |
+      receivers:
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: netscaler
+                basic_auth:
+                  username: admin
+                  password: 'mysecretpass'
+    should_fire: true
+
+  - name: "silent when password is env var reference"
+    config: |
+      receivers:
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: netscaler
+                basic_auth:
+                  username: admin
+                  password: '${env:PROM_PASS}'
+    should_fire: false
+
+  - name: "silent when prometheus absent even with password in config"
+    config: |
+      receivers:
+        vcenter:
+          endpoint: https://vcenter.example.com
+          password: 'hardcoded'
+    should_fire: false
+
+  - name: "silent when prometheus present but no hardcoded password"
+    config: |
+      receivers:
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: my-app
+                static_configs:
+                  - targets: ["localhost:8080"]
+    should_fire: false

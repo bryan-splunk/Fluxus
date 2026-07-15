@@ -1,0 +1,51 @@
+id: P1-07
+category: p1
+introduced: "0.151"
+title: "splunk_hec Exporter — batcher Block Removed"
+look_for:
+  - path: $.exporters.splunk_hec.batcher
+    match: exists
+  - path: $.exporters.splunk_hec.batcher
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Move min_size_items from batcher to sending_queue.batch.
+    # Note: P1-23 (0.123) renamed min_size_items → min_size, so target uses min_size.
+    - from: $.exporters.splunk_hec.batcher.min_size_items
+      to: $.exporters.splunk_hec.sending_queue.batch.min_size
+    # Move min_size_bytes if present (field name was not renamed by P1-23).
+    - from: $.exporters.splunk_hec.batcher.min_size_bytes
+      to: $.exporters.splunk_hec.sending_queue.batch.min_size_bytes
+    # max_size_items — renamed to max_size by P1-23 (0.123).
+    - from: $.exporters.splunk_hec.batcher.max_size_items
+      to: $.exporters.splunk_hec.sending_queue.batch.max_size
+    # Drop the now-empty batcher block entirely.
+    - from: $.exporters.splunk_hec.batcher
+      to: ""
+  before: |
+    exporters:
+      splunk_hec:
+        batcher:
+          enabled: true
+          min_size_items: 100
+  after: |
+    exporters:
+      splunk_hec:
+        sending_queue:
+          batch:
+            min_size: 100
+guidance: |
+  Remove the batcher: block from the splunk_hec exporter definition entirely.
+  Use sending_queue::batch instead for batching control.
+  Note: min_size_items and max_size_items under batcher: became min_size and max_size
+  under sending_queue::batch (see P1-23). The field names inside splunk_hec's batch block
+  retain the _items suffix — use min_size_items and max_size_items there.
+description: >-
+  The batcher block nested inside splunk_hec exporter definitions was removed in 0.151.
+  Any config containing a batcher key under a splunk_hec exporter will cause the collector
+  to fail to start. Remove the batcher block and migrate batching configuration to
+  sending_queue::batch instead.
+see_also:
+  - P1-06

@@ -1,0 +1,33 @@
+cases:
+  - name: "fires when kafka present AND client_id absent — injects default"
+    config: |
+      receivers:
+        kafka:
+          brokers: [kafka:9092]
+          topic: otel-spans
+    should_fire: true
+    apply_contains:
+      - "client_id: sarama"
+
+  - name: "fires when named kafka/consumer present AND client_id absent"
+    config: |
+      receivers:
+        kafka/consumer:
+          brokers: [kafka:9092]
+    should_fire: true
+    apply_contains:
+      - "client_id: sarama"
+
+  - name: "silent when client_id already set"
+    config: |
+      receivers:
+        kafka:
+          brokers: [kafka:9092]
+          client_id: otel-collector
+    should_fire: false
+
+  - name: "silent when no kafka receiver"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

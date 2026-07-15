@@ -1,0 +1,69 @@
+cases:
+  - name: "fires when fluentforward receiver present and removes it"
+    config: |
+      receivers:
+        fluentforward:
+          endpoint: 0.0.0.0:8006
+      service:
+        pipelines:
+          logs:
+            receivers: [fluentforward, otlp]
+    should_fire: true
+    apply_not_contains:
+      - "fluentforward:"
+    apply_contains:
+      - "receivers: [otlp]"
+
+  - name: "fires when fluent_forward receiver present and removes it"
+    config: |
+      receivers:
+        fluent_forward:
+          endpoint: 0.0.0.0:8006
+    should_fire: true
+    apply_not_contains:
+      - "fluent_forward:"
+
+  - name: "silent when no fluentforward receiver"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false
+
+  # Regression (P1-17 collateral-deletion bug): a commented-out template block
+  # sitting above the live fluentforward receiver must survive its deletion, as
+  # must the following live receiver. Before the deleteFromParent fix, removing
+  # fluentforward also erased the commented receivers attached to it as comments.
+  - name: "preserves commented-out template block and following receiver when deleting fluentforward"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+
+        # [OPTIONAL — AGGRESSIVE] Windows Performance Counters template
+        # windowsperfcounters:
+        #   collection_interval: 30s
+        # iis:
+        #   collection_interval: 60s
+        # sqlserver:
+        #   instance_name: MSSQLSERVER
+
+        fluentforward:
+          endpoint: 0.0.0.0:8006
+
+        jaeger:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:14250
+    should_fire: true
+    apply_not_contains:
+      - "fluentforward:"
+    apply_contains:
+      # Commented-out template receivers must NOT be deleted as collateral damage.
+      - "# windowsperfcounters:"
+      - "# iis:"
+      - "# sqlserver:"
+      # The live receiver following the deleted one must remain intact.
+      - "jaeger:"
+      - "otlp:"

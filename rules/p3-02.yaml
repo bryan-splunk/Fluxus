@@ -1,0 +1,61 @@
+id: P3-02
+category: p3
+introduced: "0.153"
+title: "Kafka — Deprecated No-Op Fields (resolve_canonical_bootstrap_servers_only / auth.sasl.version)"
+look_for:
+  - path: $.receivers.kafka.resolve_canonical_bootstrap_servers_only
+    match: exists
+  - path: $.exporters.kafka.resolve_canonical_bootstrap_servers_only
+    match: exists
+  - path: $.receivers.kafka.auth.sasl.version
+    match: exists
+  - path: $.exporters.kafka.auth.sasl.version
+    match: exists
+  - path: $.receivers.kafka.resolve_canonical_bootstrap_servers_only
+    match: exists
+    in_comments: true
+  - path: $.exporters.kafka.resolve_canonical_bootstrap_servers_only
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete deprecated no-op field from kafka receiver (Franz-go has no equivalent).
+    - from: $.receivers.kafka.resolve_canonical_bootstrap_servers_only
+      to: ""
+    # Delete same no-op field from kafka exporter.
+    - from: $.exporters.kafka.resolve_canonical_bootstrap_servers_only
+      to: ""
+    # Delete sasl.version from kafka receiver (Franz-go negotiates this automatically).
+    - from: $.receivers.kafka.auth.sasl.version
+      to: ""
+    # Delete same field from kafka exporter.
+    - from: $.exporters.kafka.auth.sasl.version
+      to: ""
+  before: |
+    # Deprecated in 0.153 — fields are no-ops (have no effect):
+    receivers:
+      kafka:
+        resolve_canonical_bootstrap_servers_only: true   # Franz-go has no equivalent
+        auth:
+          sasl:
+            version: 1   # Franz-go negotiates SASL handshake version automatically
+  after: |
+    # Remove both fields:
+    receivers:
+      kafka:
+        brokers: [kafka:9092]
+        # resolve_canonical_bootstrap_servers_only and auth.sasl.version removed
+guidance: |
+  Remove the following no-op fields from kafka receiver and exporter config:
+  - resolve_canonical_bootstrap_servers_only: (Franz-go has no equivalent; it is silently ignored)
+  - auth: sasl: version: (Franz-go negotiates SASL handshake version automatically)
+
+  These fields have no effect but will cause a startup failure when they are formally
+  removed in a future release. Clean them up now to avoid a future breaking change.
+description: >-
+  In 0.153, two Kafka config fields were deprecated as no-ops: resolve_canonical_bootstrap_servers_only
+  (Franz-go has no equivalent — Sarama-specific option) and auth.sasl.version (Franz-go
+  negotiates SASL handshake version automatically). These fields currently have no effect
+  but will be removed in a future release and will then cause a startup failure. Remove them
+  now to avoid a future breaking change.

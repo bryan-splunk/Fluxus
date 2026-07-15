@@ -1,0 +1,40 @@
+cases:
+  - name: "fires when kafka receiver has resolve_canonical_bootstrap_servers_only"
+    config: |
+      receivers:
+        kafka:
+          brokers: [kafka:9092]
+          resolve_canonical_bootstrap_servers_only: true
+    should_fire: true
+    apply_not_contains:
+      - "resolve_canonical_bootstrap_servers_only"
+
+  - name: "fires when kafka receiver has auth.sasl.version"
+    config: |
+      receivers:
+        kafka:
+          brokers: [kafka:9092]
+          auth:
+            sasl:
+              version: 1
+    should_fire: true
+    apply_not_contains:
+      - "version:"
+
+  - name: "fires when kafka exporter has resolve_canonical_bootstrap_servers_only"
+    config: |
+      exporters:
+        kafka:
+          brokers: [kafka:9092]
+          resolve_canonical_bootstrap_servers_only: false
+    should_fire: true
+    apply_not_contains:
+      - "resolve_canonical_bootstrap_servers_only"
+
+  - name: "silent when kafka has neither removed field"
+    config: |
+      receivers:
+        kafka:
+          brokers: [kafka:9092]
+          client_id: otel-collector
+    should_fire: false

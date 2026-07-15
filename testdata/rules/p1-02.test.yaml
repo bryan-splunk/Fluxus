@@ -1,0 +1,21 @@
+cases:
+  - name: "fires when sapm receiver present and removes it"
+    config: |
+      receivers:
+        sapm:
+          endpoint: 0.0.0.0:7276
+      service:
+        pipelines:
+          traces:
+            receivers: [sapm, otlp]
+    should_fire: true
+    apply_not_contains:
+      - "sapm:"
+    apply_contains:
+      - "receivers: [otlp]"
+
+  - name: "silent when sapm receiver absent"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

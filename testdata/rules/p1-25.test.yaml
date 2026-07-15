@@ -1,0 +1,24 @@
+cases:
+  - name: "fires when transform processor has statements field"
+    config: |
+      processors:
+        transform:
+          statements:
+            - set(name, "new") where name == "old"
+    should_fire: true
+
+  - name: "fires when transform processor has metric_statements"
+    config: |
+      processors:
+        transform:
+          metric_statements:
+            - context: metric
+              statements:
+                - set(name, "new") where name == "old"
+    should_fire: true
+
+  - name: "silent when transform processor absent"
+    config: |
+      processors:
+        batch: {}
+    should_fire: false

@@ -1,0 +1,17 @@
+cases:
+  - name: "fires when routing connector has match_once and deletes it"
+    config: |
+      connectors:
+        routing:
+          match_once: true
+          default_pipelines: [traces/default]
+    should_fire: true
+    apply_not_contains:
+      - "match_once"
+
+  - name: "silent when match_once absent"
+    config: |
+      connectors:
+        routing:
+          default_pipelines: [traces/default]
+    should_fire: false

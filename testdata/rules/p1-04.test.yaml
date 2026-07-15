@@ -1,0 +1,21 @@
+cases:
+  - name: "fires when signalfx receiver present and removes it"
+    config: |
+      receivers:
+        signalfx:
+          endpoint: 0.0.0.0:9943
+      service:
+        pipelines:
+          metrics:
+            receivers: [signalfx, otlp]
+    should_fire: true
+    apply_not_contains:
+      - "signalfx:"
+    apply_contains:
+      - "receivers: [otlp]"
+
+  - name: "silent when signalfx receiver absent"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

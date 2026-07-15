@@ -1,0 +1,43 @@
+id: P2-13
+category: p2
+introduced: "0.142"
+title: "prometheusremotewrite Exporter — Remote Write 2.0 (Requires Prometheus 3.8.0+)"
+look_for:
+  - path: $.exporters.prometheusremotewrite
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.exporters.prometheusremotewrite
+      comment_text: |
+        # UPGRADE(P2-13 v0.142): prometheusremotewrite exporter uses Remote Write 2.0 (requires Prometheus 3.8.0+).
+        # Upgrading the collector WITHOUT upgrading Prometheus will cause data to stop being ingested.
+        # ACTION: upgrade Prometheus endpoint to 3.8.0+ BEFORE upgrading the collector.
+        # Also remove --feature-gates=pkg.translator.prometheus.NormalizeName from startup if present (removed v0.151).
+  before: |
+    exporters:
+      prometheusremotewrite:
+        endpoint: https://prometheus.example.com/api/v1/write
+  after: |
+    # After 0.142 — Remote Write 2.0 rc.4 (requires Prometheus 3.8.0+):
+    exporters:
+      prometheusremotewrite:
+        endpoint: https://prometheus.example.com/api/v1/write
+    # Upgrade Prometheus endpoint to 3.8.0+ BEFORE upgrading the collector.
+
+    # Feature gate removed in 0.151 — remove if present in startup:
+    # pkg.translator.prometheus.NormalizeName
+guidance: |
+  Upgrade your Prometheus endpoint to version 3.8.0 or later BEFORE upgrading the
+  collector. The prometheusremotewrite exporter now uses Remote Write 2.0 rc.4, which
+  is wire-incompatible with Prometheus older than 3.8.0.
+
+  Also remove this feature gate flag if present (removed in 0.151):
+  - pkg.translator.prometheus.NormalizeName
+description: >-
+  In 0.142, the prometheusremotewrite exporter was updated to use Remote Write 2.0 rc.4,
+  which is wire-incompatible with Prometheus older than 3.8.0. Upgrading the collector
+  without first upgrading the Prometheus receiving endpoint will cause data to stop being
+  ingested. Upgrade your Prometheus endpoint to version 3.8.0 or later before upgrading
+  the collector. Also remove the pkg.translator.prometheus.NormalizeName feature gate
+  from startup arguments if present (removed in 0.151).

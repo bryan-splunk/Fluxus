@@ -1,0 +1,16 @@
+cases:
+  - name: "fires when service.telemetry present"
+    config: |
+      service:
+        telemetry:
+          logs:
+            level: info
+    should_fire: true
+
+  - name: "silent when service.telemetry absent"
+    config: |
+      service:
+        pipelines:
+          traces:
+            receivers: [otlp]
+    should_fire: false

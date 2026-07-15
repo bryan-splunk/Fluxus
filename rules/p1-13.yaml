@@ -1,0 +1,74 @@
+id: P1-13
+category: p1
+introduced: "0.153"
+title: "filter / transform Processors — error_mode Default Changed to ignore"
+look_for:
+  - path: $.processors.filter
+    match: exists
+  - path: $.processors.transform
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    # Inject error_mode: ignore into every filter instance that does not already
+    # declare it.  Using inject_at_each means filter/foo, filter/bar, etc. are
+    # all covered — the engine skips any instance that already has error_mode.
+    - to:             $.processors.filter.error_mode
+      default:        ignore
+      inject_at_each: true
+    - to:             $.processors.transform.error_mode
+      default:        ignore
+      inject_at_each: true
+    # Comment injected on the base filter key (and transform key if present) so
+    # that the intent of the injected default is visible in source control.
+    - comment_path: $.processors.filter
+      comment_text: |
+        # UPGRADE(P1-13): error_mode default changed from 'propagate' to 'ignore' in v0.153.
+        # 'ignore' is now injected explicitly to preserve visibility. Change to
+        # 'propagate' if you want OTTL errors to fail the batch (pre-0.153 behavior).
+    - comment_path: $.processors.transform
+      comment_text: |
+        # UPGRADE(P1-13): error_mode default changed from 'propagate' to 'ignore' in v0.153.
+        # 'ignore' is now injected explicitly to preserve visibility. Change to
+        # 'propagate' if you want OTTL errors to fail the batch (pre-0.153 behavior).
+  before: |
+    processors:
+      filter: {}        # no error_mode set — previously defaulted to propagate
+      transform: {}     # no error_mode set — previously defaulted to propagate
+  after: |
+    processors:
+      filter:
+        # UPGRADE(P1-13): error_mode default changed from 'propagate' to 'ignore' in v0.153.
+        # 'ignore' is now injected explicitly to preserve visibility. Change to
+        # 'propagate' if you want OTTL errors to fail the batch (pre-0.153 behavior).
+        error_mode: ignore
+      transform:
+        # UPGRADE(P1-13): error_mode default changed from 'propagate' to 'ignore' in v0.153.
+        # 'ignore' is now injected explicitly to preserve visibility. Change to
+        # 'propagate' if you want OTTL errors to fail the batch (pre-0.153 behavior).
+        error_mode: ignore
+guidance: |
+  Explicitly set error_mode on every filter: and transform: processor definition.
+
+  To restore pre-0.153 behavior (errors propagate and fail the batch):
+    error_mode: propagate
+
+  To adopt the new default (errors are silently ignored):
+    error_mode: ignore
+
+  To temporarily revert via feature gate (not recommended for production):
+    --feature-gates=-processor.filter.defaultErrorModeIgnore
+    --feature-gates=-processor.transform.defaultErrorModeIgnore
+
+  The explicit setting is required for each named processor instance (e.g. filter/drop,
+  filter/allow, transform/enrich must each have their own error_mode).
+description: >-
+  In 0.153, the default error_mode for both filter and transform processors changed from
+  propagate to ignore. This is a silent data loss risk — OTTL errors that previously failed
+  the batch now pass silently, hiding misconfigurations. Any filter or transform processor
+  without an explicit error_mode field is now behaving differently than before. The engine
+  has injected error_mode: ignore to make the new default explicit and visible in source
+  control. Change to error_mode: propagate if you want to restore pre-0.153 behavior.
+see_also:
+  - P1-14
+  - P1-15

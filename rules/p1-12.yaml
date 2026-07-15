@@ -1,0 +1,51 @@
+id: P1-12
+category: p1
+introduced: "0.136"
+title: "kubeletstats / kubelet_stats — No-Op Config Sections Cause Startup Failure"
+look_for:
+  - path: $.receivers.kubeletstats.metrics
+    match: exists
+  - path: $.receivers.kubelet_stats.metrics
+    match: exists
+  - path: $.receivers.kubeletstats.metrics
+    match: exists
+    in_comments: true
+  - path: $.receivers.kubelet_stats.metrics
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.kubeletstats
+      comment_text: |
+        # UPGRADE(P1-12 v0.136): kubeletstats — no-op config sections now cause startup failure.
+        # Remove any 'enabled: false' entries for metrics that are already disabled by default.
+        # Run: otelcol validate --config=config.yaml to verify.
+    - comment_path: $.receivers.kubelet_stats
+      comment_text: |
+        # UPGRADE(P1-12 v0.136): kubelet_stats — no-op config sections now cause startup failure.
+        # Remove any 'enabled: false' entries for metrics that are already disabled by default.
+        # Run: otelcol validate --config=config.yaml to verify.
+            enabled: false   # already default-off — REMOVE
+          k8s.pod.cpu.utilization:
+            enabled: false   # already default-off — REMOVE
+  after: |
+    receivers:
+      kubeletstats: {}
+      # Remove enabled: false entries for metrics already off by default.
+guidance: |
+  Remove any enabled: false entries for metrics that are already disabled by default
+  in the kubeletstats/kubelet_stats receiver. These no-op entries previously had no
+  effect but now cause a startup failure.
+
+  Run otelcol validate --config=config.yaml to identify any remaining issues before
+  deploying. If you are unsure which metrics are off by default, check the kubelet_stats
+  receiver documentation or test with the newer collector version locally.
+description: >-
+  In 0.136, the Splunk distribution converter that silently dropped no-op config sections
+  in kubeletstats (kubelet_stats) was removed. Any metrics sub-block entry containing
+  enabled: false for a metric that is already disabled by default will now cause a startup
+  failure. Remove these no-op enabled: false entries. Run otelcol validate --config=config.yaml
+  to catch remaining issues.
+see_also:
+  - P3-04

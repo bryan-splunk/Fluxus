@@ -1,0 +1,49 @@
+id: P3-08
+category: p3
+introduced: "0.148"
+title: "splunk_otlp_histograms Converter Removed — Attribute No Longer Auto-Injected"
+look_for:
+  - path: $.processors.resource
+    match: exists
+  - path: $.receivers.prometheus
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.processors.resource
+      comment_text: |
+        # UPGRADE(P3-08 v0.148): splunk_otlp_histograms resource attribute no longer auto-injected.
+        # If queries/routing filter on this attribute, add it manually to this processor:
+        #   attributes: [{key: splunk_otlp_histograms, value: "true", action: upsert}]
+    - comment_path: $.receivers.prometheus
+      comment_text: |
+        # UPGRADE(P3-08 v0.148): splunk_otlp_histograms attribute no longer auto-injected — add resource processor if needed.
+      comment_once: true
+  after: |
+    # After 0.148 — attribute is no longer auto-injected.
+    # If you still need this attribute, add it manually:
+    processors:
+      resource:
+        attributes:
+          - key: splunk_otlp_histograms
+            value: "true"
+            action: upsert
+guidance: |
+  If you still need the splunk_otlp_histograms resource attribute, add it manually using
+  the resource processor:
+
+    processors:
+      resource:
+        attributes:
+          - key: splunk_otlp_histograms
+            value: "true"
+            action: upsert
+
+  Then add the resource processor to the appropriate pipelines before the exporter.
+  If you do not use this attribute in any dashboards or queries, no action is required.
+description: >-
+  In 0.148, the automatic injection of the splunk_otlp_histograms resource attribute by
+  a Splunk config converter was removed. Queries or downstream systems that filter on this
+  attribute will return no results after the upgrade. No immediate failure results, but
+  metric routing or filtering based on this attribute will silently stop working. If you
+  still need this attribute, add it manually using a resource processor.

@@ -1,0 +1,60 @@
+id: P2-11
+category: p2
+introduced: "0.153"
+title: "http_check Receiver — Timing Metrics Now in Nanoseconds"
+look_for:
+  - path: $.receivers.http_check
+    match: exists
+  - path: $.receivers.httpcheck
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.http_check
+      comment_text: |
+        # UPGRADE(P2-11 v0.153): http_check timing metrics unit changed milliseconds → nanoseconds.
+        # Affected: httpcheck.dns.lookup.duration, client.connection.duration, tls.handshake.duration,
+        #           client.request.duration, response.duration
+        # ACTION: multiply all dashboard thresholds for these metrics by 1,000,000.
+    - comment_path: $.receivers.httpcheck
+      comment_text: |
+        # UPGRADE(P2-11 v0.153): http_check timing metrics changed ms → ns. Multiply all thresholds by 1,000,000.
+  before: |
+    # httpcheck.dns.lookup.duration = 1   (meaning 1ms)
+    receivers:
+      http_check:
+        targets:
+          - endpoint: https://example.com
+  after: |
+    # After 0.153 — timing metrics in nanoseconds:
+    # httpcheck.dns.lookup.duration = 1000000   (meaning 1ms = 1,000,000ns)
+
+    # Update all dashboard thresholds by multiplying by 1,000,000 (or dividing old thresholds by 1).
+    # Affected metrics:
+    # - httpcheck.dns.lookup.duration
+    # - httpcheck.client.connection.duration
+    # - httpcheck.tls.handshake.duration
+    # - httpcheck.client.request.duration
+    # - httpcheck.response.duration
+    receivers:
+      http_check:
+        targets:
+          - endpoint: https://example.com
+guidance: |
+  Update all dashboard thresholds and alert conditions for the following http_check
+  timing metrics (values changed from milliseconds to nanoseconds in 0.153):
+  - httpcheck.dns.lookup.duration
+  - httpcheck.client.connection.duration
+  - httpcheck.tls.handshake.duration
+  - httpcheck.client.request.duration
+  - httpcheck.response.duration
+
+  Conversion: multiply all existing threshold values by 1,000,000 (ms → ns).
+  Example: a 1.5ms threshold (1 in old ms units) becomes 1,500,000 in new ns units.
+description: >-
+  In 0.153, the timing metrics emitted by the http_check receiver changed units from
+  milliseconds to nanoseconds. Affected metrics include httpcheck.dns.lookup.duration,
+  httpcheck.client.connection.duration, httpcheck.tls.handshake.duration,
+  httpcheck.client.request.duration, and httpcheck.response.duration. Dashboard thresholds
+  and alert conditions that were set in milliseconds will be incorrect by a factor of
+  1,000,000 after the upgrade. Update all threshold values accordingly.

@@ -1,0 +1,22 @@
+cases:
+  - name: "fires when sending_queue.blocking present and renames it"
+    config: |
+      exporters:
+        otlp:
+          endpoint: otelcol:4317
+          sending_queue:
+            blocking: true
+    should_fire: true
+    apply_contains:
+      - "block_on_overflow: true"
+    apply_not_contains:
+      - "blocking:"
+
+  - name: "silent when blocking field absent"
+    config: |
+      exporters:
+        otlp:
+          endpoint: otelcol:4317
+          sending_queue:
+            num_consumers: 10
+    should_fire: false

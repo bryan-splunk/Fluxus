@@ -1,0 +1,75 @@
+id: P2-01
+category: p2
+introduced: "0.130"
+title: "Kafka Receiver (Sarama) — client_id Now Honoured"
+# logic: and — the rule fires only when the kafka receiver EXISTS and
+# client_id is ABSENT.  A config that already has client_id set is not flagged.
+logic: and
+look_for:
+  - path: $.receivers.kafka
+    match: exists
+  - path: $.receivers.kafka.client_id
+    match: absent
+migration:
+  strategy: auto
+  key_moves:
+    # Inject client_id: sarama when the key is absent.
+    # Using to-only (no from) because this is a pure inject-if-absent — there
+    # is no old key to rename, only a missing key that needs a safe default.
+    - to: $.receivers.kafka.client_id
+      default: sarama
+  before: |
+    # The kafka receiver always used client_id "sarama" before 0.130
+    # regardless of config. After 0.130 the default is "otel-collector".
+    receivers:
+      kafka:
+        brokers: [kafka:9092]
+        # No client_id set — was effectively "sarama" before, now "otel-collector"
+  after: |
+    # Option A — Pin old client ID to preserve Kafka ACL compatibility:
+    receivers:
+      kafka:
+        brokers: [kafka:9092]
+        client_id: sarama   # preserves legacy ACL match
+
+    # Option B — Update Kafka ACLs to allow "otel-collector" (recommended long-term):
+    # kafka-acls.sh --bootstrap-server <host>:9092 \
+    #   --add --allow-principal User:<collector-user> \
+    #   --operation Write --topic <topic> \
+    #   --client-id otel-collector
+    # Then remove the old "sarama" ACL entry.
+guidance: |
+  Choose one of two approaches to resolve Kafka ACL compatibility:
+
+  OPTION A — Pin the old client ID (no Kafka ACL changes needed immediately):
+    receivers:
+      kafka:
+        client_id: sarama
+
+  OPTION B — Update Kafka ACLs to allow the new default "otel-collector":
+    On your Kafka cluster admin:
+    kafka-acls.sh --bootstrap-server <host>:9092 \
+      --add --allow-principal User:<collector-user> \
+      --operation Write --topic <topic> \
+      --client-id otel-collector
+    Then remove the old "sarama" ACL entry.
+    Also update any dashboards or alerts that filter on client.id.
+
+  ⚠️ ACTION REQUIRED: Verify broker ACLs allow client.id 'otel-collector' (or pin
+  client_id: sarama). Failure to do so causes SILENT Kafka connectivity loss after upgrade
+  — the collector runs but sends/receives nothing.
+
+  See also P2-34 for the same client_id change on the kafka exporter and kafkametricsreceiver
+  (which changed in the earlier 0.123 release).
+description: >-
+  In 0.130, the Sarama-based kafka receiver began honouring the client_id config field.
+  Previously it was always overridden to "sarama" regardless of config. The new default is
+  "otel-collector". This causes two risks: (1) Kafka ACL breakage — if broker ACLs grant
+  access by client ID "sarama", those ACLs silently stop matching, causing the collector to
+  run but produce or consume nothing; (2) Monitoring/audit breakage — dashboards filtering
+  on client.id "sarama" stop matching. Either pin client_id: sarama to preserve ACL
+  compatibility, or update Kafka ACLs to allow "otel-collector".
+  ⚠️ Kafka ACL ACTION REQUIRED — verify broker ACLs allow client.id 'otel-collector' (or pin
+  client_id: sarama). Failure to do so causes silent Kafka connectivity loss after upgrade.
+see_also:
+  - P2-34

@@ -1,0 +1,54 @@
+id: P2-09
+category: p2
+introduced: "0.147"
+title: "mongodb Receiver — Schema Change, database Resource Attribute Removed"
+look_for:
+  - path: $.receivers.mongodb
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.mongodb
+      comment_text: |
+        # UPGRADE(P2-09 v0.147): mongodb receiver schema changed — 'database' resource attribute REMOVED.
+        # Before: each database = separate resource with 'database' resource attribute.
+        # After:  single resource per MongoDB server; database name is now db.namespace metric attribute.
+        # Added: service.instance.id resource attribute (UUID v5 from host:port).
+        # ACTION: update dashboards/OTTL that join on 'database' resource attribute → use 'db.namespace'.
+  before: |
+    receivers:
+      mongodb:
+        hosts:
+          - endpoint: localhost:27017
+  after: |
+    # After 0.147:
+    # Single resource per MongoDB server.
+    # 'database' resource attribute REMOVED.
+    # Database is now a metric-level attribute: db.namespace
+    # Added: service.instance.id resource attribute (UUID v5 from host:port)
+    receivers:
+      mongodb:
+        hosts:
+          - endpoint: localhost:27017
+    # Update any dashboards that joined on 'database' resource attribute.
+    # Use db.namespace metric attribute instead.
+guidance: |
+  Update dashboards and OTTL rules to use the db.namespace metric attribute instead of
+  the database resource attribute.
+
+  Schema change summary in 0.147:
+  - REMOVED: 'database' resource attribute (each database was a separate resource)
+  - ADDED: db.namespace metric-level attribute (database is now a metric attribute)
+  - ADDED: service.instance.id resource attribute (UUID v5 derived from host:port)
+  - The receiver now emits a single resource per MongoDB server instead of one per database
+
+  Update any Splunk searches, dashboard filters, or OTTL rules that previously joined on
+  the 'database' resource attribute.
+description: >-
+  In 0.147, the mongodb receiver schema changed significantly. The database resource attribute
+  was removed — previously each database produced a separate resource with a database resource
+  attribute. Now there is a single resource per MongoDB server. The database name is now
+  available as a metric-level attribute called db.namespace. A new service.instance.id
+  resource attribute (UUID v5 derived from host:port) was added. Dashboards, OTTL rules,
+  or downstream logic that joins on the database resource attribute will break and must be
+  updated to use db.namespace.

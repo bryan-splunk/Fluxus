@@ -1,0 +1,67 @@
+id: P3-04
+category: p3
+introduced: "0.150"
+title: "kubelet_stats Receiver — Deprecated Attributes Disabled by Default"
+look_for:
+  - path: $.receivers.kubeletstats
+    match: exists
+  - path: $.receivers.kubelet_stats
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.kubeletstats
+      comment_text: |
+        # UPGRADE(P3-04 v0.150): kubelet_stats deprecated attributes disabled by default.
+        # aws.volume.id, fs.type, gce.pd.name, glusterfs.endpoints.name, glusterfs.path, partition
+        # are no longer emitted unless explicitly re-enabled via extra_metadata_labels.
+        # ACTION: if dashboards/OTTL join on these attributes, add them to extra_metadata_labels
+        # during your migration window; plan to move to replacement attributes (to be removed in future).
+    - comment_path: $.receivers.kubelet_stats
+      comment_text: |
+        # UPGRADE(P3-04 v0.150): deprecated attributes off by default (aws.volume.id, fs.type, etc.).
+        # Re-enable via extra_metadata_labels if still needed; plan to migrate away from these attributes.
+  before: |
+    # aws.volume.id
+    # fs.type
+    # gce.pd.name
+    # glusterfs.endpoints.name
+    # glusterfs.path
+    # partition
+    receivers:
+      kubelet_stats: {}
+  after: |
+    # After 0.150 — above attributes are disabled by default.
+    # Re-enable explicitly if still needed (will be removed in a future release):
+    receivers:
+      kubelet_stats:
+        extra_metadata_labels:
+          - aws.volume.id
+          - fs.type
+          - gce.pd.name
+          - glusterfs.endpoints.name
+          - glusterfs.path
+          - partition
+guidance: |
+  If any downstream dashboards or OTTL rules reference the following deprecated attributes,
+  explicitly re-enable them in the kubelet_stats receiver config or plan to migrate:
+  - aws.volume.id
+  - fs.type
+  - gce.pd.name
+  - glusterfs.endpoints.name
+  - glusterfs.path
+  - partition
+
+  These are disabled by default from 0.150 and will be removed in a future release.
+  To keep them emitting during migration, enable each under:
+    receivers:
+      kubelet_stats:
+        extra_metadata_labels: [fs.type]  (or whichever applies)
+description: >-
+  In 0.150, several kubelet_stats receiver attributes were disabled by default due to
+  deprecation: aws.volume.id, fs.type, gce.pd.name, glusterfs.endpoints.name, glusterfs.path,
+  and partition. Dashboards or OTTL rules that join on these attributes will show empty
+  results. Re-enable them explicitly in config if still needed during a migration period,
+  but plan to move to replacement attributes as these will be removed in a future release.
+see_also:
+  - P1-12

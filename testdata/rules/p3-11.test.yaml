@@ -1,0 +1,20 @@
+cases:
+  - name: "fires when host_metrics receiver present"
+    config: |
+      receivers:
+        host_metrics:
+          collection_interval: 10s
+    should_fire: true
+
+  - name: "fires when hostmetrics receiver present"
+    config: |
+      receivers:
+        hostmetrics:
+          collection_interval: 10s
+    should_fire: true
+
+  - name: "silent when neither present"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

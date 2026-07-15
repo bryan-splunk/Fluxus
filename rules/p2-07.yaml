@@ -1,0 +1,69 @@
+id: P2-07
+category: p2
+introduced: "0.140"
+title: "prometheus Receiver — Start Time No Longer Adjusted"
+look_for:
+  - path: $.receivers.prometheus
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    # Inject an inline upgrade note on the prometheus receiver block.
+    - comment_path: $.receivers.prometheus
+      comment_once: true
+      comment_text: |
+        # UPGRADE (P2-07, v0.140): start time auto-adjustment removed.
+        # If cumulative metrics show incorrect rates, add 'metricstarttime: {}' processor.
+        # Remove these feature gates from startup (permanently stabilized — causes errors):
+        #   receiver.prometheusreceiver.RemoveStartTimeAdjustment
+        #   receiver.prometheusreceiver.UseCreatedMetric
+        #   receiver.prometheusreceiver.EnableNativeHistograms
+        #   receiver.prometheusreceiver.RemoveLegacyResourceAttributes
+        #   receiver.prometheusreceiver.RemoveReportExtraScrapeMetricsConfig
+  before: |
+    # Feature gates now permanently removed from startup:
+    # receiver.prometheusreceiver.RemoveStartTimeAdjustment
+    # receiver.prometheusreceiver.UseCreatedMetric
+    # receiver.prometheusreceiver.EnableNativeHistograms
+    # receiver.prometheusreceiver.RemoveLegacyResourceAttributes
+    # receiver.prometheusreceiver.RemoveReportExtraScrapeMetricsConfig
+    receivers:
+      prometheus:
+        config: {}
+        # start time was automatically adjusted before 0.140
+  after: |
+    receivers:
+      prometheus:
+        config: {}
+
+    # If start time adjustment is needed, add the metricstarttime processor:
+    processors:
+      metricstarttime: {}
+
+    # Remove all listed feature gates from startup arguments — they are permanently locked.
+guidance: |
+  If your downstream systems depend on adjusted start times for rate calculations,
+  add the metricstarttime processor to your prometheus pipeline:
+
+    processors:
+      metricstarttime: {}
+
+  Then add metricstarttime to the processors list in the prometheus pipeline definition.
+
+  Also remove these feature gate flags from startup if present (now always-on):
+  - receiver.prometheusreceiver.RemoveStartTimeAdjustment
+  - receiver.prometheusreceiver.UseCreatedMetric
+  - receiver.prometheusreceiver.EnableNativeHistograms
+  - receiver.prometheusreceiver.RemoveLegacyResourceAttributes
+  - receiver.prometheusreceiver.RemoveReportExtraScrapeMetricsConfig
+description: >-
+  In 0.140, the prometheus receiver stopped automatically adjusting start times for
+  cumulative metrics. Cumulative metrics may report incorrect rates if downstream systems
+  depend on the Prometheus start-time adjustment behavior. If start time adjustment is
+  required, add the metricstarttime processor to the pipeline. Also remove the now-removed
+  prometheus receiver feature gate flags from all startup arguments (systemd unit files,
+  Helm values, Windows service registry, etc.) — they are all permanently stabilized and
+  specifying them will cause errors.
+see_also:
+  - P1-16
+  - P2-18

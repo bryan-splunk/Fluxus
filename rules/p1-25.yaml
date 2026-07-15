@@ -1,0 +1,72 @@
+id: P1-25
+category: p1
+introduced: "0.124"
+title: "transform Processor — Mixed Config Style (Basic + Advanced)"
+look_for:
+  - path: $.processors.transform.statements
+    match: exists
+  - path: $.processors.transform.metric_statements
+    match: exists
+  - path: $.processors.transform.log_statements
+    match: exists
+  - path: $.processors.transform.trace_statements
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.processors.transform
+      comment_text: |
+        # UPGRADE(P1-25 v0.124): transform processor — mixing Basic Config (metric_statements/log_statements)
+        # and Advanced Config (top-level statements) in the same processor block causes startup failure.
+        # ACTION: choose one style and migrate all statements to it (see P1-25 assessment for details).
+  before: |
+    processors:
+      transform:
+        statements:                     # Advanced Config style
+          - set(attributes["env"], "prod")
+        metric_statements:              # Basic Config style (CANNOT mix)
+          - context: metric
+            statements:
+              - set(name, Concat([name, "_v2"], ""))
+  after: |
+    # Option A — Pure Basic Config (recommended):
+    processors:
+      transform:
+        metric_statements:
+          - context: metric
+            statements:
+              - set(name, Concat([name, "_v2"], ""))
+        log_statements:
+          - context: log
+            statements:
+              - set(attributes["env"], "prod")
+
+    # Option B — Pure Advanced Config:
+    # processors:
+    #   transform:
+    #     statements:
+    #       - context: metric
+    #         statements:
+    #           - set(name, Concat([name, "_v2"], ""))
+    #       - context: log
+    #         statements:
+    #           - set(attributes["env"], "prod")
+guidance: |
+  Choose one config style for the transform processor and migrate the other:
+
+  Basic Config style: uses signal-specific keys (metric_statements:, log_statements:,
+  trace_statements:) each containing a list of {context, statements} objects.
+
+  Advanced Config style: uses a top-level statements: key with context hints inline.
+
+  You cannot mix both styles in the same processor instance. If you have multiple named
+  instances (e.g. transform/metrics and transform/logs), each can use a different style —
+  the restriction is per-instance, not per-config.
+description: >-
+  In 0.124, the transform processor requires exactly one config style per processor instance.
+  Basic Config (uses signal-specific keys: metric_statements, log_statements, trace_statements)
+  and Advanced Config (uses top-level statements with context hints) cannot be mixed in the
+  same processor block. The collector fails to start if both styles appear in one transform
+  block. Choose one style and migrate all statements to it.
+see_also:
+  - P1-13

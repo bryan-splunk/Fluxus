@@ -1,0 +1,57 @@
+id: P2-08
+category: p2
+introduced: "0.142"
+title: "docker_observer / docker_stats — Docker API Version Upgraded to 1.44"
+look_for:
+  - path: $.extensions.docker_observer
+    match: exists
+  - path: $.receivers.docker_stats
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.extensions.docker_observer
+      comment_text: |
+        # UPGRADE(P2-08 v0.142): docker_observer default Docker API upgraded to 1.44.
+        # If your Docker daemon is older than API 1.44, add: api_version: "1.24" (or your daemon version).
+    - comment_path: $.receivers.docker_stats
+      comment_text: |
+        # UPGRADE(P2-08 v0.142): docker_stats default Docker API upgraded to 1.44.
+        # If your Docker daemon is older than API 1.44, add: api_version: "1.24" (or your daemon version).
+  before: |
+    extensions:
+      docker_observer: {}
+
+    receivers:
+      docker_stats: {}
+  after: |
+    # Both now default to Docker API 1.44.
+    # Pin to your Docker daemon version if older than 1.44:
+    extensions:
+      docker_observer:
+        api_version: "1.24"   # pin to older version if needed
+
+    receivers:
+      docker_stats:
+        api_version: "1.24"   # pin to older version if needed
+guidance: |
+  If your Docker daemon is older than API 1.44, pin the api_version to match your daemon:
+
+    docker_observer extension (changed in 0.141):
+      extensions:
+        docker_observer:
+          api_version: "1.24"   # pin to your Docker daemon API version
+
+    docker_stats receiver (changed in 0.142):
+      receivers:
+        docker_stats:
+          api_version: "1.24"   # pin to your Docker daemon API version
+
+  Both now default to Docker API 1.44. The minimum supported API version has NOT changed;
+  only the default changed. Check your Docker daemon version with: docker version
+description: >-
+  The default Docker API version used by docker_observer (changed in 0.141) and docker_stats
+  (changed in 0.142) was upgraded to 1.44. If the Docker daemon on the target host is older
+  than API 1.44, these components will fail to connect. The minimum supported API version
+  has not changed — only the default. Pin api_version to your Docker daemon's supported API
+  version if needed.

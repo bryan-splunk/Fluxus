@@ -1,0 +1,62 @@
+id: P1-24
+category: p1
+introduced: "0.123"
+title: "service::telemetry::address Silently Ignored — No Internal Metrics Emitted"
+look_for:
+  - path: $.service.telemetry.address
+    match: exists
+  - path: $.service.telemetry.address
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.service.telemetry
+      comment_text: |
+        # UPGRADE(P1-24 v0.123): service.telemetry.address is SILENTLY IGNORED — no internal metrics emitted.
+        # The gate became stable in 0.128; workarounds are no longer possible.
+        # ACTION: migrate to metrics.readers format:
+        #   service.telemetry.metrics.readers[0].pull.exporter.prometheus.host/port
+  after: |
+    service:
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus:
+                    host: 0.0.0.0
+                    port: 8888
+                    without_scope_info: true
+                    without_type_suffix: true
+                    without_units: true
+guidance: |
+  Migrate the service::telemetry::address field to the new readers-based telemetry format.
+  The legacy flat address field is silently ignored from 0.123+, causing all internal
+  metrics to stop being emitted with no startup error.
+
+  Full readers format (recommended):
+    service:
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus:
+                    host: 0.0.0.0
+                    port: 8888
+                    without_scope_info: true
+                    without_type_suffix: true
+                    without_units: true
+
+  Important: The telemetry.disableAddressFieldForInternalTelemetry feature gate became
+  STABLE in 0.128 — using --feature-gates=-telemetry.disableAddressFieldForInternalTelemetry
+  FAILS collector startup from 0.128+. There is no gate-based workaround; the config must
+  be migrated.
+description: >-
+  The legacy flat telemetry address format (service::telemetry::address) was promoted to
+  beta-disabled behavior via a feature gate in 0.123, causing the field to be silently
+  ignored. The collector starts without error but emits NO internal telemetry metrics —
+  a silent operational failure. The gate became stable in 0.128, making flag-based workarounds
+  impossible from 0.128 onwards. Migrate to the new readers format under service.telemetry.metrics.
+  A simpler alternative is service.telemetry.metrics.address but that itself is also deprecated.

@@ -1,0 +1,96 @@
+id: P1-17
+category: p1
+introduced: "0.145"
+title: "FluentD Permanently Removed from All Splunk Installers"
+look_for:
+  - path: $.receivers.fluentforward
+    match: exists
+  - path: $.receivers.fluent_forward
+    match: exists
+  - path: $.receivers.fluentforward
+    match: exists
+    in_comments: true
+  - path: $.receivers.fluent_forward
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete the fluentforward receiver definition (original camelCase form).
+    - from: $.receivers.fluentforward
+      to: ""
+    # Delete fluent_forward definition if the user already manually renamed it.
+    - from: $.receivers.fluent_forward
+      to: ""
+    # Remove both name forms from all pipeline receiver arrays.
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: fluentforward
+      new_value: ""
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: fluent_forward
+      new_value: ""
+    # Inject a notice on the receivers section itself so the FluentD removal
+    # is visible at the top of the receivers block — matches what the AI Skill produces.
+    - comment_path: $.receivers
+      comment_once: true
+      comment_text: |
+        # [P1-17 UPGRADE v0.145] fluentforward receiver PERMANENTLY REMOVED — FluentD was removed
+        # from all Splunk OTel Collector installers (MSI/Chocolatey/PowerShell/RPM/DEB v0.144–0.145).
+        # Replace with the file_log receiver using include paths for your log files.
+    # Inject a notice on the pipelines section so the IT team knows why the receiver is missing
+    # regardless of whether the pipeline is named "logs", "logs/docker", etc.
+    - comment_path: $.service.pipelines
+      comment_text: |
+        # [P1-17 UPGRADE v0.145] fluentforward receiver PERMANENTLY REMOVED — FluentD was removed
+        # from all Splunk OTel Collector installers (MSI/Chocolatey/PowerShell/RPM/DEB v0.144–0.145).
+        # ACTION REQUIRED: Add the file_log receiver with include paths for your log files.
+        # If FluentD was parsing structured logs, add json_parser or regex_parser operators.
+  before: |
+    # FluentD removed from:
+    # - MSI (Windows)        0.144
+    # - Chocolatey           0.144
+    # - Standard installer   0.144
+    # - PowerShell script    0.145
+    # - RPM / DEB packages   0.145
+
+    receivers:
+      fluentforward:
+        endpoint: 0.0.0.0:8006
+    service:
+      pipelines:
+        logs:
+          receivers: [fluentforward]
+  after: |
+    # fluentforward receiver and all pipeline references removed automatically.
+    # Add the file_log receiver manually with log paths for your host:
+    receivers:
+      file_log:
+        include: [/var/log/myapp/*.log]
+        operators:
+          - type: json_parser
+    service:
+      pipelines:
+        logs:
+          receivers: [file_log]   # update manually
+guidance: |
+  Replace all FluentD-based log collection with the file_log receiver.
+
+  FluentD was removed from the following installer types:
+  - MSI (Windows): 0.144
+  - Chocolatey: 0.144
+  - Standard installer: 0.144
+  - PowerShell script: 0.145
+  - RPM / DEB packages: 0.145
+
+  The file_log receiver (formerly filelog, renamed per P3-01) replaces FluentD for file-based
+  log collection. Use operators like json_parser, regex_parser, or multiline for parsing.
+
+  Also remove any migratecheckpoint command references — the FluentD sidecar is gone and
+  the checkpoint migration command was removed in 0.139.
+description: >-
+  FluentD was permanently removed from all Splunk OTel Collector installers between versions
+  0.144 (MSI, Chocolatey, standard installer) and 0.145 (PowerShell, RPM/DEB). Log collection
+  pipelines relying on FluentD will break as FluentD is no longer installed by the collector
+  packages. The engine automatically removes the fluentforward (and fluent_forward) receiver
+  definition and cleans up all pipeline receiver references. Replace with the file_log receiver
+  manually — include paths and operators are host-specific.

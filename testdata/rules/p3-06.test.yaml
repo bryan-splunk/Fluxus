@@ -1,0 +1,15 @@
+cases:
+  - name: "fires when clickhouse exporter present"
+    config: |
+      exporters:
+        clickhouse:
+          endpoint: tcp://clickhouse:9000
+    should_fire: true
+    apply_contains:
+      - "json: true"
+
+  - name: "silent when clickhouse absent"
+    config: |
+      exporters:
+        otlp: {}
+    should_fire: false

@@ -1,0 +1,38 @@
+id: P3-06
+category: p3
+introduced: "0.153"
+title: "clickhouse Exporter — json Feature Gate Removed"
+look_for:
+  - path: $.exporters.clickhouse
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    # Inject json: true if absent (removes need to use the removed feature gate)
+    - to:      $.exporters.clickhouse.json
+      default: "true"
+    - comment_path: $.exporters.clickhouse
+      comment_text: |
+        # UPGRADE(P3-06 v0.153): +clickhouse.json feature gate removed.
+        # Remove --feature-gates=+clickhouse.json from startup if present (causes startup warning).
+        # json: true has been injected directly here — remove if you do NOT want JSON output.
+  after: |
+    # Remove flag from startup and set directly in config:
+    exporters:
+      clickhouse:
+        json: true
+guidance: |
+  Two actions required:
+
+  1. Remove --feature-gates=+clickhouse.json from all service startup arguments
+     (systemd unit files, launch scripts, Helm chart values, Windows service registry).
+
+  2. Set json: true directly in the clickhouse exporter config instead:
+       exporters:
+         clickhouse:
+           json: true
+description: >-
+  In 0.153, the +clickhouse.json feature gate was removed. If this flag is present in
+  startup arguments, it will cause a startup warning. Remove the flag from all startup
+  configurations and set json: true directly in the clickhouse exporter config block
+  instead.

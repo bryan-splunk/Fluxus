@@ -1,0 +1,68 @@
+id: P1-26
+category: p1
+introduced: "0.125"
+title: "k8sattributes — node_from_env_var Startup Error When Env Var Unset"
+look_for:
+  - path: $.processors.k8s_attributes.node_from_env_var
+    match: exists
+  - path: $.processors.k8sattributes.node_from_env_var
+    match: exists
+  - path: $.processors.k8s_attributes.node_from_env_var
+    match: exists
+    in_comments: true
+  - path: $.processors.k8sattributes.node_from_env_var
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.processors.k8s_attributes
+      comment_text: |
+        # UPGRADE(P1-26 v0.125): k8s_attributes node_from_env_var now causes hard startup error if env var unset.
+        # ACTION: ensure the referenced env var is always set via Kubernetes Downward API
+        # (spec.nodeName → env var), or remove node_from_env_var to monitor the whole cluster.
+    - comment_path: $.processors.k8sattributes
+      comment_text: |
+        # UPGRADE(P1-26 v0.125): k8sattributes node_from_env_var now causes hard startup error if env var unset.
+        # Ensure the env var is set via Downward API, or remove node_from_env_var to monitor whole cluster.
+  before: |
+    processors:
+      k8s_attributes:
+        node_from_env_var: MY_NODE_NAME
+  after: |
+    # Option A — Inject node name via Kubernetes Downward API (recommended):
+    # In your Kubernetes pod spec:
+    # env:
+    #   - name: MY_NODE_NAME
+    #     valueFrom:
+    #       fieldRef:
+    #         fieldPath: spec.nodeName
+    # Config stays the same — env var will always be set.
+    processors:
+      k8s_attributes:
+        node_from_env_var: MY_NODE_NAME
+
+    # Option B — Remove to monitor whole cluster intentionally:
+    # processors:
+    #   k8s_attributes: {}
+guidance: |
+  Either ensure the referenced environment variable is always set, or remove
+  node_from_env_var: to intentionally monitor the whole cluster.
+
+  To inject the node name via the Kubernetes Downward API (recommended), add this to
+  your pod spec's env section:
+    - name: MY_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+
+  Before 0.125, an unset env var silently caused the processor to watch the entire cluster
+  instead of a single node — a dangerous misconfiguration that is now a hard startup error.
+  This change makes the behavior explicit and safe.
+description: >-
+  In 0.125, the k8s_attributes (formerly k8sattributes) processor was changed to produce
+  a hard startup error if node_from_env_var references an environment variable that is not
+  set. Before 0.125, an unset variable silently caused the processor to monitor the entire
+  cluster instead of a single node — a dangerous silent misconfiguration. Ensure the
+  referenced environment variable is always set via the Kubernetes Downward API, or remove
+  node_from_env_var to intentionally monitor the whole cluster.

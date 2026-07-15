@@ -1,0 +1,57 @@
+id: P2-15
+category: p2
+introduced: "0.131"
+title: "IIS Receiver — Application Pool Metrics Enabled by Default"
+look_for:
+  - path: $.receivers.iis
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    # Inject an inline notice so the IT team knows about the new default metrics and how to opt out.
+    - comment_path: $.receivers.iis
+      comment_text: |
+        # [P2-15 UPGRADE v0.131] iis.application_pool.state and iis.application_pool.uptime
+        # are NOW ENABLED BY DEFAULT. On environments with many application pools this increases
+        # metric volume and billing. To disable, add under this receiver:
+        #   metrics:
+        #     iis.application_pool.state:
+        #       enabled: false
+        #     iis.application_pool.uptime:
+        #       enabled: false
+  before: |
+    # Before 0.131 — iis.application_pool.state and iis.application_pool.uptime
+    # were not emitted by default:
+    receivers:
+      iis: {}
+  after: |
+    # After 0.131 — both metrics are now enabled by default.
+    # If the additional metric volume is not desired, explicitly disable:
+    receivers:
+      iis:
+        metrics:
+          iis.application_pool.state:
+            enabled: false
+          iis.application_pool.uptime:
+            enabled: false
+guidance: |
+  If the increased metric volume from the two new default-enabled metrics is not desired,
+  explicitly disable them in the IIS receiver config:
+
+    receivers:
+      iis:
+        metrics:
+          iis.application_pool.state:
+            enabled: false
+          iis.application_pool.uptime:
+            enabled: false
+
+  This is especially relevant in environments with many IIS application pools where the
+  additional volume could affect metric billing or storage. If you want to keep them
+  enabled, no action is required.
+description: >-
+  In 0.131, two new IIS metrics (iis.application_pool.state and iis.application_pool.uptime)
+  were enabled by default. On environments with many IIS application pools, this increases
+  metric volume and billing. No config change is required if the additional metrics are
+  acceptable. If the extra volume is not desired, explicitly disable both metrics in the
+  IIS receiver config.

@@ -1,0 +1,53 @@
+id: P2-27
+category: p2
+introduced: "0.124"
+title: "splunkenterprise Receiver — Default Metrics Now Opt-In (except splunk.health)"
+look_for:
+  - path: $.receivers.splunkenterprise
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.splunkenterprise
+      comment_text: |
+        # UPGRADE(P2-27 v0.124): splunkenterprise — all metrics now disabled by default except splunk.health.
+        # ACTION: explicitly enable each metric you need under the metrics: sub-block.
+        # Example: splunk.data.indexes.extended.bucket.count: { enabled: true }
+  before: |
+    receivers:
+      splunkenterprise:
+        basicauth/bfauth:
+          client_auth:
+            username: admin
+            password: "changeme"
+        endpoint: https://splunk:8089
+  after: |
+    # After 0.124 — only splunk.health is on by default.
+    # Explicitly enable each metric you need:
+    receivers:
+      splunkenterprise:
+        basicauth/bfauth:
+          client_auth:
+            username: admin
+            password: "changeme"
+        endpoint: https://splunk:8089
+        metrics:
+          splunk.data.indexes.extended.bucket.count:
+            enabled: true
+          splunk.index.size.extended:
+            enabled: true
+          splunk.license.index.usage:
+            enabled: true
+          # Add each metric you need — only splunk.health is on by default
+guidance: |
+  Explicitly enable each splunkenterprise metric you need under a metrics: block in the
+  receiver config. Only splunk.health is enabled by default from 0.124 onward.
+
+  Review which metrics you were previously collecting (they were all on by default) and
+  add explicit enabled: true entries for each one you want to keep collecting.
+  The splunkenterprise receiver documentation lists all available metrics.
+description: >-
+  In 0.124, all splunkenterprise receiver metrics were changed to disabled by default
+  except for splunk.health. If you relied on the default metric set being collected, those
+  metrics will silently stop being gathered after the upgrade without any error or warning.
+  Explicitly enable each required metric in the receiver config using the metrics sub-block.

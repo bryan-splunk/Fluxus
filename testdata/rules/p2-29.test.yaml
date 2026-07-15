@@ -1,0 +1,42 @@
+cases:
+  - name: "fires when kafka receiver has auth.tls"
+    config: |
+      receivers:
+        kafka:
+          brokers: [kafka:9092]
+          auth:
+            tls:
+              cert_file: /etc/certs/kafka.crt
+              key_file: /etc/certs/kafka.key
+    should_fire: true
+
+  - name: "fires when kafka exporter has auth.tls"
+    config: |
+      exporters:
+        kafka:
+          brokers: [kafka:9092]
+          auth:
+            tls:
+              cert_file: /etc/certs/kafka.crt
+    should_fire: true
+
+  - name: "fires when kafkametrics has auth.tls"
+    config: |
+      receivers:
+        kafkametrics:
+          brokers: [kafka:9092]
+          auth:
+            tls:
+              insecure_skip_verify: true
+    should_fire: true
+
+  - name: "silent when kafka present but no auth.tls"
+    config: |
+      receivers:
+        kafka:
+          brokers: [kafka:9092]
+          auth:
+            plain_text:
+              username: admin
+              password: secret
+    should_fire: false

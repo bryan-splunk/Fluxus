@@ -1,0 +1,53 @@
+id: P1-23
+category: p1
+introduced: "0.123"
+title: "min_size_items / max_size_items Removed from Batch Config"
+look_for:
+  - path: $.exporters.*.sending_queue.batch.min_size_items
+    match: exists
+  - path: $.exporters.*.sending_queue.batch.max_size_items
+    match: exists
+  - path: $.exporters.*.sending_queue.batch.min_size_items
+    match: exists
+    in_comments: true
+  - path: $.exporters.*.sending_queue.batch.max_size_items
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Rename min_size_items → min_size for every exporter's sending_queue.batch block.
+    - from: $.exporters.*.sending_queue.batch.min_size_items
+      to: $.exporters.*.sending_queue.batch.min_size
+    # Rename max_size_items → max_size.
+    - from: $.exporters.*.sending_queue.batch.max_size_items
+      to: $.exporters.*.sending_queue.batch.max_size
+  before: |
+    exporters:
+      otlp:
+        sending_queue:
+          batch:
+            min_size_items: 100    # REMOVED
+            max_size_items: 1000   # REMOVED
+  after: |
+    exporters:
+      otlp:
+        sending_queue:
+          batch:
+            min_size: 100      # replacement for min_size_items
+            max_size: 1000     # replacement for max_size_items
+guidance: |
+  Replace min_size_items: and max_size_items: with min_size: and max_size: respectively.
+  This applies to batch: blocks inside sending_queue: on any exporter.
+
+  Note: In the top-level processors: batch: block the equivalent fields are
+  send_batch_size and send_batch_max_size (not min_size/max_size). Those field names
+  were not changed; only the sending_queue::batch sub-block fields were renamed.
+description: >-
+  The fields min_size_items and max_size_items in batch blocks (under sending_queue or
+  the top-level batch processor) were deprecated in 0.121 and removed in 0.123. The
+  collector fails to start if either field is present. Replace min_size_items with min_size
+  and max_size_items with max_size respectively. In the standalone batch processor,
+  use send_batch_size and send_batch_max_size instead.
+see_also:
+  - P1-06

@@ -1,0 +1,64 @@
+id: P1-19
+category: p1
+introduced: "0.148"
+title: "mysql / postgresql Receivers — Query Sample Defaults Off"
+look_for:
+  - path: $.receivers.mysql
+    match: exists
+  - path: $.receivers.postgresql
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.mysql
+      comment_text: |
+        # UPGRADE(P1-19 v0.148): mysql query_sample disabled by default.
+        # If you relied on default query sample collection, add 'query_sample: { enabled: true }'.
+    - comment_path: $.receivers.postgresql
+      comment_text: |
+        # UPGRADE(P1-19 v0.148): postgresql query_sample AND top_queries disabled by default.
+        # To re-enable: add 'query_sample: { enabled: true }' and 'top_queries: { enabled: true }'.
+  before: |
+    receivers:
+      mysql: {}
+      postgresql: {}
+  after: |
+    # After 0.148 — explicitly re-enable if needed:
+    receivers:
+      mysql:
+        query_sample:
+          enabled: true
+
+      postgresql:
+        top_queries:
+          enabled: true
+        query_sample:
+          enabled: true
+guidance: |
+  For mysql receiver: query_sample collection is now off by default from 0.148.
+  If you need query sample data, explicitly re-enable it:
+    receivers:
+      mysql:
+        query_sample:
+          enabled: true
+
+  For postgresql receiver: both top_queries and query_sample are now off by default.
+  Explicitly re-enable each collection you need:
+    receivers:
+      postgresql:
+        top_queries:
+          enabled: true
+        query_sample:
+          enabled: true
+
+  Note: In 0.132 the top_query_collection and query_sample_collection keys on the
+  postgresql receiver were removed (see P1-11). Use the new top_queries / query_sample
+  sub-keys as shown above.
+description: >-
+  In 0.148, query sample collection was disabled by default in both mysql and postgresql
+  receivers (top_queries also off by default for postgresql). This is a silent data loss
+  risk — if you relied on the default behavior to collect query sample data, those metrics
+  stop being gathered after upgrading without any error or warning. Explicitly re-enable
+  query_sample (and top_queries for postgresql) in the receiver config if you need this data.
+see_also:
+  - P1-11

@@ -1,0 +1,74 @@
+id: P2-05
+category: p2
+introduced: "0.147"
+title: "resourcedetection Processor — Cloud Platform Values Changed"
+look_for:
+  - path: $.processors.resource_detection
+    match: exists
+  - path: $.processors.resourcedetection
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    # Inject an inline upgrade note on the resource_detection processor block.
+    - comment_path: $.processors.resource_detection
+      comment_text: |
+        # UPGRADE (P2-05, v0.147): cloud.platform attribute values changed.
+        # azure_eks → azure.eks  |  azure_vm → azure.vm  |  faas.id → faas.instance
+        # Update dashboards, OTTL conditions, and filter rules referencing old values.
+        # Also remove from startup: processor.resourcedetection.propagateerrors
+        #   processor.resourcedetection.removeGCPFaasID
+    # Same note on the old component name if still present.
+    - comment_path: $.processors.resourcedetection
+      comment_text: |
+        # UPGRADE (P2-05, v0.147): cloud.platform attribute values changed.
+        # azure_eks → azure.eks  |  azure_vm → azure.vm  |  faas.id → faas.instance
+        # Update dashboards, OTTL conditions, and filter rules referencing old values.
+        # Also remove from startup: processor.resourcedetection.propagateerrors
+        #   processor.resourcedetection.removeGCPFaasID
+  before: |
+    # Before 0.147 (old semconv values):
+    # cloud.platform: azure_eks
+    # cloud.platform: azure_vm
+    # faas.id: <value>
+
+    processors:
+      resourcedetection:
+        detectors: [azure, gcp]
+  after: |
+    # After 0.147 (aligns with OTel semconv v1.39):
+    # cloud.platform: azure.eks
+    # cloud.platform: azure.vm
+    # faas.instance: <value>   (replaces faas.id)
+
+    processors:
+      resource_detection:
+        detectors: [azure, gcp]
+
+    # Feature gates removed (remove from startup if present):
+    # processor.resourcedetection.propagateerrors
+    # processor.resourcedetection.removeGCPFaasID
+guidance: |
+  Update any OTTL conditions, dashboard filters, or downstream logic that references
+  the affected attribute values:
+
+  Azure cloud.platform values changed:
+  - azure_eks → azure.eks
+  - azure_vm → azure.vm
+
+  Azure attribute renamed:
+  - faas.id → faas.instance
+
+  Also remove these feature gate flags if present (now always-on):
+  - processor.resourcedetection.propagateerrors
+  - processor.resourcedetection.removeGCPFaasID
+description: >-
+  In 0.147, Azure cloud.platform attribute values changed to align with OTel semantic
+  conventions v1.39 (azure_eks → azure.eks, azure_vm → azure.vm), and the faas.id
+  attribute was replaced by faas.instance. Dashboards, OTTL conditions, or filter rules
+  that match on the old string values will break silently. Update all downstream logic
+  referencing these values. Also remove the now-removed feature gate flags
+  processor.resourcedetection.propagateerrors and processor.resourcedetection.removeGCPFaasID
+  from startup arguments.
+see_also:
+  - P1-18

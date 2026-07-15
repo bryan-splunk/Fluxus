@@ -1,0 +1,27 @@
+cases:
+  - name: "fires when sending_queue.batch has min_size_items and renames it"
+    config: |
+      exporters:
+        otlp:
+          endpoint: otelcol:4317
+          sending_queue:
+            batch:
+              min_size_items: 100
+              max_size_items: 500
+    should_fire: true
+    apply_contains:
+      - "min_size: 100"
+      - "max_size: 500"
+    apply_not_contains:
+      - "min_size_items"
+      - "max_size_items"
+
+  - name: "silent when batch uses new field names"
+    config: |
+      exporters:
+        otlp:
+          endpoint: otelcol:4317
+          sending_queue:
+            batch:
+              min_size: 100
+    should_fire: false

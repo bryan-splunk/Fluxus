@@ -1,0 +1,56 @@
+id: P3-07
+category: p3
+introduced: "0.142"
+title: "Config Debug Endpoint Removed (localhost:55554/debug/configz)"
+look_for:
+  - path: $.extensions.zpages
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.extensions.zpages
+      comment_text: |
+        # UPGRADE(P3-07 v0.142): config debug endpoint localhost:55554/debug/configz removed.
+        # Use zpages extension instead: http://localhost:55679/debug/expvarz
+        # Get effective config: curl http://localhost:55679/debug/expvarz | jq -r '.["splunk.config.effective"]'
+        # PowerShell: (Invoke-WebRequest http://localhost:55679/debug/expvarz).Content | ConvertFrom-Json | Select "splunk.config.effective"
+    # http://localhost:55554/debug/configz  →  404
+  after: |
+    # Use the zpages extension instead:
+    # http://localhost:55679/debug/expvarz
+
+    # Get effective config (bash):
+    # curl http://localhost:55679/debug/expvarz --silent \
+    #   | jq -r '.["splunk.config.effective"]'
+
+    # Get initial config (bash):
+    # curl http://localhost:55679/debug/expvarz --silent \
+    #   | jq -r '.["splunk.config.initial"]'
+
+    # PowerShell:
+    # (Invoke-WebRequest http://localhost:55679/debug/expvarz).Content \
+    #   | ConvertFrom-Json \
+    #   | Select-Object -ExpandProperty "splunk.config.effective"
+guidance: |
+  The /debug/configz endpoint was removed in 0.142. Use the zpages extension instead:
+  - New endpoint: http://localhost:55679/debug/expvarz
+
+  To get effective config (bash):
+    curl http://localhost:55679/debug/expvarz --silent \
+      | jq -r '.["splunk.config.effective"]'
+
+  To get initial config (bash):
+    curl http://localhost:55679/debug/expvarz --silent \
+      | jq -r '.["splunk.config.initial"]'
+
+  PowerShell:
+    (Invoke-WebRequest http://localhost:55679/debug/expvarz).Content \
+      | ConvertFrom-Json \
+      | Select-Object -ExpandProperty "splunk.config.effective"
+
+  Update any scripts, runbooks, or monitoring tooling that referenced the old endpoint.
+description: >-
+  In 0.142, the config debug endpoint at http://localhost:55554/debug/configz was removed.
+  Any scripts, tooling, or documentation that reference this URL will receive a 404 response.
+  Use the zpages extension endpoint at http://localhost:55679/debug/expvarz instead and
+  extract config from the splunk.config.effective or splunk.config.initial keys.

@@ -1,0 +1,20 @@
+cases:
+  - name: "fires when awss3 exporter has s3_partition"
+    config: |
+      exporters:
+        awss3:
+          s3uploader:
+            region: us-east-1
+            s3_bucket: my-bucket
+            s3_partition: minute
+    should_fire: true
+
+  - name: "silent when s3_partition absent"
+    config: |
+      exporters:
+        awss3:
+          s3uploader:
+            region: us-east-1
+            s3_bucket: my-bucket
+            s3_partition_format: "year=%Y/month=%m/day=%d/hour=%H/minute=%M"
+    should_fire: false

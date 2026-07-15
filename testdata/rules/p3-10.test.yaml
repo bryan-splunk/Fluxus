@@ -1,0 +1,23 @@
+cases:
+  - name: "fires when transform processor present"
+    config: |
+      processors:
+        transform:
+          metric_statements:
+            - context: metric
+              statements:
+                - truncate_all(attributes, 1024)
+    should_fire: true
+
+  - name: "fires when filter processor present"
+    config: |
+      processors:
+        filter:
+          error_mode: ignore
+    should_fire: true
+
+  - name: "silent when neither present"
+    config: |
+      processors:
+        batch: {}
+    should_fire: false

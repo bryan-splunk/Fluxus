@@ -1,0 +1,55 @@
+id: P2-02
+category: p2
+introduced: "0.148"
+title: "Kafka Exporter — Batching Requires Explicit metadata_keys"
+look_for:
+  - path: $.exporters.kafka.sending_queue.batch
+    match: exists
+  - path: $.exporters.kafka.include_metadata_keys
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.exporters.kafka
+      comment_text: |
+        # UPGRADE(P2-02 v0.148): kafka exporter batching with metadata partitioning requires explicit metadata_keys.
+        # If sending_queue.batch.enabled: true AND include_metadata_keys is set, add:
+        #   sending_queue.batch.partition.metadata_keys: [<same values as include_metadata_keys>]
+        # Without this, metadata-based partition routing silently stops working.
+  before: |
+    exporters:
+      kafka:
+        sending_queue:
+          batch:
+            enabled: true
+        include_metadata_keys: [tenant_id]
+  after: |
+    # After 0.148 — metadata_keys must be explicit inside partition block:
+    exporters:
+      kafka:
+        sending_queue:
+          batch:
+            enabled: true
+            partition:
+              metadata_keys: [tenant_id]   # must match include_metadata_keys
+        include_metadata_keys: [tenant_id]
+guidance: |
+  Explicitly add metadata_keys inside the partition: block under sending_queue::batch:
+  to restore metadata-based partitioning. The metadata_keys value must match the keys
+  listed in include_metadata_keys at the exporter level.
+
+    exporters:
+      kafka:
+        sending_queue:
+          batch:
+            enabled: true
+            partition:
+              metadata_keys: [tenant_id]   # must match include_metadata_keys
+        include_metadata_keys: [tenant_id]
+description: >-
+  In 0.148, the kafka exporter requires metadata_keys to be explicitly specified inside
+  the partition block within the sending_queue::batch config when using metadata-based
+  partitioning. Before this version the wiring was implicit. If a kafka exporter has both
+  sending_queue::batch::enabled: true and include_metadata_keys set, metadata-based
+  partitioning silently stops working without the explicit partition.metadata_keys field.
+  Add the partition block with matching metadata_keys.

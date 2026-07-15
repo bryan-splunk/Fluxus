@@ -1,0 +1,17 @@
+cases:
+  - name: "fires when tail_sampling processor present"
+    config: |
+      processors:
+        tail_sampling:
+          decision_wait: 10s
+          policies:
+            - name: keep-errors
+              type: status_code
+              status_code: {status_codes: [ERROR]}
+    should_fire: true
+
+  - name: "silent when tail_sampling absent"
+    config: |
+      processors:
+        batch: {}
+    should_fire: false

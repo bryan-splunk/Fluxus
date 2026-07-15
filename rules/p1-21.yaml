@@ -1,0 +1,46 @@
+id: P1-21
+category: p1
+introduced: "0.120"
+title: "routing Connector — match_once Field Removed"
+look_for:
+  - path: "$.connectors.routing.match_once"
+    match: exists
+  - path: "$.connectors.routing.match_once"
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete match_once from routing connector — field causes startup failure if present.
+    # Named-instance matching handles routing/my-name automatically.
+    - from: $.connectors.routing.match_once
+      to: ""
+  before: |
+    connectors:
+      routing:
+        match_once: true
+        table:
+          - condition: attributes["env"] == "prod"
+            pipelines: [traces/prod]
+  after: |
+    connectors:
+      routing:
+        table:
+          - condition: attributes["env"] == "prod"
+            pipelines: [traces/prod]
+        default_pipelines: [traces/default]
+guidance: |
+  Remove the match_once: field entirely from the routing connector config.
+  The routing connector now always evaluates all table entries — the previous
+  match_once: false behavior is the only supported mode.
+
+  If you previously relied on match_once: true to stop evaluation after the first match,
+  you will need to restructure your OTTL conditions so that each entry is mutually exclusive
+  (e.g. use explicit negation conditions).
+description: >-
+  The match_once field was removed from the routing connector in 0.120.
+  Collector fails to start if present in a routing connector config.
+  Remove the field entirely — the connector now always evaluates all table
+  entries (match_once behavior is no longer supported).
+see_also:
+  - P1-01

@@ -1,0 +1,18 @@
+cases:
+  - name: "fires when prometheusremotewrite has export_created_metric and deletes it"
+    config: |
+      exporters:
+        prometheusremotewrite:
+          endpoint: https://prometheus.example.com/api/v1/write
+          export_created_metric:
+            enabled: false
+    should_fire: true
+    apply_not_contains:
+      - "export_created_metric:"
+
+  - name: "silent when export_created_metric absent"
+    config: |
+      exporters:
+        prometheusremotewrite:
+          endpoint: https://prometheus.example.com/api/v1/write
+    should_fire: false

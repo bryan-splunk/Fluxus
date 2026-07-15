@@ -1,0 +1,49 @@
+id: P2-25
+category: p2
+introduced: "0.122"
+title: "sqlserver Receiver — X.509 Certificate Requires Positive Serial Number"
+look_for:
+  - path: $.receivers.sqlserver
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.sqlserver
+      comment_text: |
+        # UPGRADE(P2-25 v0.122): sqlserver receiver requires X.509 certificates with a positive serial number.
+        # Certs with zero or negative serial number will cause auth failures.
+        # ACTION: verify cert: openssl x509 -in cert.pem -text -noout | grep "Serial Number"
+        # If serial is 0 or negative, regenerate the certificate using standard CA tooling.
+  before: |
+    # sqlserver receiver with TLS and custom certificate — may fail if cert has
+    # zero or negative serial number:
+    receivers:
+      sqlserver:
+        server: myserver
+        username: sa
+        password: "${env:SA_PASSWORD}"
+        # TLS is configured externally
+  after: |
+    # Regenerate any affected X.509 certificates to ensure a positive serial number.
+    # This is a certificate management action — no YAML config change is required.
+    #
+    # Verify certificate serial number:
+    # openssl x509 -in cert.pem -text -noout | grep "Serial Number"
+    # A valid serial number should be a positive integer.
+guidance: |
+  Regenerate any affected X.509 certificates using standard CA tooling to ensure a
+  positive serial number. Certificates with a zero or negative serial number will cause
+  the SQL Server receiver to fail to authenticate.
+
+  This is a certificate management action — no YAML config change is required.
+  Use your PKI tooling (e.g. openssl, cfssl, HashiCorp Vault PKI) to reissue the
+  certificate with a valid positive serial number before deploying the upgraded collector.
+description: >-
+  In 0.122, the sqlserver receiver requires that X.509 certificates used for TLS
+  authentication have a positive serial number. Certificates with a zero or negative serial
+  number will cause the receiver to fail to start or fail to authenticate. This is a
+  certificate management action — no YAML config change is required. Audit any custom
+  certificates used with sqlserver TLS connections and regenerate any that have non-positive
+  serial numbers using standard CA tooling.
+see_also:
+  - P2-33

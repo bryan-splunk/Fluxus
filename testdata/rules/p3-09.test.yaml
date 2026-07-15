@@ -1,0 +1,26 @@
+cases:
+  - name: "fires when transform processor present"
+    config: |
+      processors:
+        transform:
+          metric_statements:
+            - context: metric
+              statements:
+                - set(name, "new_name") where name == "old_name"
+    should_fire: true
+
+  - name: "fires when filter processor present"
+    config: |
+      processors:
+        filter:
+          metrics:
+            include:
+              match_type: strict
+              metric_names: [my_metric]
+    should_fire: true
+
+  - name: "silent when neither present"
+    config: |
+      processors:
+        batch: {}
+    should_fire: false

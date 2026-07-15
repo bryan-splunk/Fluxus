@@ -1,0 +1,21 @@
+cases:
+  - name: "fires when signalfx exporter has realm"
+    config: |
+      exporters:
+        signalfx:
+          realm: us1
+          access_token: abc123
+    should_fire: true
+
+  - name: "fires when signalfx exporter present (no realm)"
+    config: |
+      exporters:
+        signalfx:
+          ingest_url: https://ingest.us1.signalfx.com
+    should_fire: true
+
+  - name: "silent when signalfx exporter absent"
+    config: |
+      exporters:
+        otlp: {}
+    should_fire: false

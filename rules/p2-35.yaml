@@ -1,0 +1,47 @@
+id: P2-35
+category: p2
+introduced: "0.147"
+title: "sqlserver Receiver — Performance Object Event Names Changed"
+look_for:
+  - path: $.receivers.sqlserver
+    match: exists
+migration:
+  strategy: inform_only
+  key_moves:
+    - comment_path: $.receivers.sqlserver
+      comment_text: |
+        # UPGRADE(P2-35 v0.147): sqlserver receiver performance object event names changed.
+        # The following metric event names were renamed:
+        #   sqlserver.performance_object.* → sqlserver.performance.object.*
+        # ACTION: Update any dashboards, alerts, or SPL queries that reference the old
+        # metric names. No YAML config change required — this is a metric name change only.
+  before: |
+    # sqlserver receiver with performance metrics collection:
+    receivers:
+      sqlserver:
+        server: myserver
+        username: sa
+        password: "${env:SA_PASSWORD}"
+        collection_interval: 10s
+  after: |
+    # No YAML config change required.
+    # Update dashboards and queries that reference old sqlserver performance metric names:
+    #   sqlserver.performance_object.* → sqlserver.performance.object.*
+guidance: |
+  Update any dashboards, Splunk searches, alerts, or OTTL statements that reference
+  sqlserver performance object metric names:
+  - Old pattern: sqlserver.performance_object.*
+  - New pattern: sqlserver.performance.object.*
+
+  No YAML configuration change is required — this is a metric naming change only.
+  Search for sqlserver.performance_object in all monitoring queries and SPL searches
+  and update the prefix to sqlserver.performance.object.
+description: >-
+  In 0.147, the sqlserver receiver changed the naming pattern for performance object
+  metric events. Metric names using the sqlserver.performance_object.* prefix were
+  renamed to sqlserver.performance.object.*. No YAML configuration change is required —
+  the change only affects the telemetry emitted by the receiver. Review and update any
+  dashboards, alerts, or SPL queries that reference the old metric names.
+see_also:
+  - P2-25
+  - P2-33

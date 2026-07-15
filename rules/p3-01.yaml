@@ -1,0 +1,340 @@
+id: P3-01
+category: p3
+introduced: "0.153"
+title: "Component Renames — snake_case Migration"
+look_for:
+  - path: $.receivers.filelog
+    match: exists
+  - path: $.receivers.fluentforward
+    match: exists
+  - path: $.receivers.hostmetrics
+    match: exists
+  - path: $.receivers.k8sobjects
+    match: exists
+  - path: $.receivers.kubeletstats
+    match: exists
+  - path: $.receivers.kafkametrics
+    match: exists
+  - path: $.receivers.httpcheck
+    match: exists
+  - path: $.receivers.tcpcheck
+    match: exists
+  - path: $.receivers.tcplog
+    match: exists
+  - path: $.receivers.udplog
+    match: exists
+  - path: $.receivers.windowseventlog
+    match: exists
+  - path: $.receivers.sshcheck
+    match: exists
+  - path: $.receivers.tlscheck
+    match: exists
+  - path: $.receivers.filestats
+    match: exists
+  - path: $.receivers.namedpipe
+    match: exists
+  - path: $.receivers.cloudfoundry
+    match: exists
+  - path: $.receivers.azureeventhub
+    match: exists
+  - path: $.receivers.mongodbatlas
+    match: exists
+  - path: $.processors.k8sattributes
+    match: exists
+  - path: $.processors.metricstransform
+    match: exists
+  - path: $.processors.logdedup
+    match: exists
+  - path: $.processors.resourcedetection
+    match: exists
+  - path: $.connectors.spanmetrics
+    match: exists
+  - path: $.connectors.servicegraph
+    match: exists
+  - path: $.exporters.loadbalancing
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    # --- Receivers: definition renames ---
+    - from: $.receivers.filelog
+      to: $.receivers.file_log
+    - from: $.receivers.fluentforward
+      to: $.receivers.fluent_forward
+    - from: $.receivers.hostmetrics
+      to: $.receivers.host_metrics
+    - from: $.receivers.k8sobjects
+      to: $.receivers.k8s_objects
+    - from: $.receivers.kubeletstats
+      to: $.receivers.kubelet_stats
+    - from: $.receivers.kafkametrics
+      to: $.receivers.kafka_metrics
+    - from: $.receivers.httpcheck
+      to: $.receivers.http_check
+    - from: $.receivers.tcpcheck
+      to: $.receivers.tcp_check
+    - from: $.receivers.tcplog
+      to: $.receivers.tcp_log
+    - from: $.receivers.udplog
+      to: $.receivers.udp_log
+    - from: $.receivers.windowseventlog
+      to: $.receivers.windows_event_log
+    - from: $.receivers.sshcheck
+      to: $.receivers.ssh_check
+    - from: $.receivers.tlscheck
+      to: $.receivers.tls_check
+    - from: $.receivers.filestats
+      to: $.receivers.file_stats
+    - from: $.receivers.namedpipe
+      to: $.receivers.named_pipe
+    - from: $.receivers.cloudfoundry
+      to: $.receivers.cloud_foundry
+    - from: $.receivers.azureeventhub
+      to: $.receivers.azure_event_hub
+    - from: $.receivers.mongodbatlas
+      to: $.receivers.mongodb_atlas
+    # --- Processors: definition renames ---
+    - from: $.processors.k8sattributes
+      to: $.processors.k8s_attributes
+    - from: $.processors.metricstransform
+      to: $.processors.metrics_transform
+    - from: $.processors.logdedup
+      to: $.processors.log_dedup
+    - from: $.processors.resourcedetection
+      to: $.processors.resource_detection
+    # --- Connectors: definition renames ---
+    - from: $.connectors.spanmetrics
+      to: $.connectors.span_metrics
+    - from: $.connectors.servicegraph
+      to: $.connectors.service_graph
+    # --- Exporters: definition renames ---
+    - from: $.exporters.loadbalancing
+      to: $.exporters.load_balancing
+    # --- Pipeline receiver array references ---
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: filelog
+      new_value: file_log
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: fluentforward
+      new_value: fluent_forward
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: hostmetrics
+      new_value: host_metrics
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: k8sobjects
+      new_value: k8s_objects
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: kubeletstats
+      new_value: kubelet_stats
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: kafkametrics
+      new_value: kafka_metrics
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: httpcheck
+      new_value: http_check
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: tcpcheck
+      new_value: tcp_check
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: tcplog
+      new_value: tcp_log
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: udplog
+      new_value: udp_log
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: windowseventlog
+      new_value: windows_event_log
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: sshcheck
+      new_value: ssh_check
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: tlscheck
+      new_value: tls_check
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: filestats
+      new_value: file_stats
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: namedpipe
+      new_value: named_pipe
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: cloudfoundry
+      new_value: cloud_foundry
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: azureeventhub
+      new_value: azure_event_hub
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: mongodbatlas
+      new_value: mongodb_atlas
+    # Connectors used as receivers in pipelines
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: spanmetrics
+      new_value: span_metrics
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: servicegraph
+      new_value: service_graph
+    # --- Pipeline processor array references ---
+    - sequence_path: $.service.pipelines.*.processors
+      old_value: k8sattributes
+      new_value: k8s_attributes
+    - sequence_path: $.service.pipelines.*.processors
+      old_value: metricstransform
+      new_value: metrics_transform
+    - sequence_path: $.service.pipelines.*.processors
+      old_value: logdedup
+      new_value: log_dedup
+    - sequence_path: $.service.pipelines.*.processors
+      old_value: resourcedetection
+      new_value: resource_detection
+    # --- Pipeline exporter array references ---
+    - sequence_path: $.service.pipelines.*.exporters
+      old_value: loadbalancing
+      new_value: load_balancing
+    # Connectors used as exporters in pipelines
+    - sequence_path: $.service.pipelines.*.exporters
+      old_value: spanmetrics
+      new_value: span_metrics
+    - sequence_path: $.service.pipelines.*.exporters
+      old_value: servicegraph
+      new_value: service_graph
+    # --- Upgrade notices: inject inline annotation on each renamed component ---
+    # Each entry is a no-op when the component is absent from this config.
+    # comment_path runs AFTER the rename key_moves above, so the new (snake_case) names are used.
+    # Receivers
+    - comment_path: $.receivers.file_log
+      comment_text: '# [P3-01 UPGRADE v0.149] filelog renamed to file_log'
+    - comment_path: $.receivers.host_metrics
+      comment_text: '# [P3-01 UPGRADE v0.151] renamed from hostmetrics — update pipeline references and any startup scripts referencing the old name'
+    - comment_path: $.receivers.k8s_objects
+      comment_text: '# [P3-01 UPGRADE v0.151] k8sobjects renamed to k8s_objects'
+    - comment_path: $.receivers.kubelet_stats
+      comment_text: '# [P3-01 UPGRADE v0.152] kubeletstats renamed to kubelet_stats'
+    - comment_path: $.receivers.kafka_metrics
+      comment_text: '# [P3-01 UPGRADE v0.152] kafkametrics renamed to kafka_metrics'
+    - comment_path: $.receivers.http_check
+      comment_text: '# [P3-01 UPGRADE v0.150] httpcheck renamed to http_check'
+    - comment_path: $.receivers.tcp_check
+      comment_text: '# [P3-01 UPGRADE v0.152] tcpcheck renamed to tcp_check'
+    - comment_path: $.receivers.tcp_log
+      comment_text: '# [P3-01 UPGRADE v0.150] tcplog renamed to tcp_log'
+    - comment_path: $.receivers.udp_log
+      comment_text: '# [P3-01 UPGRADE v0.150] udplog renamed to udp_log'
+    - comment_path: $.receivers.windows_event_log
+      comment_text: |
+        # [P3-01 UPGRADE v0.150] windowseventlog renamed to windows_event_log
+        # [UPGRADE NOTE v0.143] windows_event_log event_data field changed from raw bytes to a
+        # structured map of named fields. Update any pipelines/dashboards that extracted raw
+        # event_data bytes to reference named fields instead (e.g. event_data.EventID).
+    - comment_path: $.receivers.ssh_check
+      comment_text: '# [P3-01 UPGRADE v0.151] sshcheck renamed to ssh_check'
+    - comment_path: $.receivers.tls_check
+      comment_text: '# [P3-01 UPGRADE v0.150] tlscheck renamed to tls_check'
+    - comment_path: $.receivers.file_stats
+      comment_text: '# [P3-01 UPGRADE v0.151] filestats renamed to file_stats'
+    - comment_path: $.receivers.named_pipe
+      comment_text: '# [P3-01 UPGRADE v0.150] namedpipe renamed to named_pipe'
+    - comment_path: $.receivers.cloud_foundry
+      comment_text: '# [P3-01 UPGRADE v0.152] cloudfoundry renamed to cloud_foundry'
+    - comment_path: $.receivers.azure_event_hub
+      comment_text: '# [P3-01 UPGRADE v0.145] azureeventhub renamed to azure_event_hub'
+    - comment_path: $.receivers.mongodb_atlas
+      comment_text: '# [P3-01 UPGRADE v0.145] mongodbatlas renamed to mongodb_atlas'
+    # Processors
+    - comment_path: $.processors.k8s_attributes
+      comment_text: '# [P3-01 UPGRADE v0.146] k8sattributes renamed to k8s_attributes'
+    - comment_path: $.processors.metrics_transform
+      comment_text: '# [P3-01 UPGRADE v0.152] metricstransform renamed to metrics_transform'
+    - comment_path: $.processors.log_dedup
+      comment_text: '# [P3-01 UPGRADE v0.151] logdedup renamed to log_dedup'
+    - comment_path: $.processors.resource_detection
+      comment_once: true
+      comment_text: '# [P3-01 UPGRADE v0.153] renamed from resourcedetection — update pipeline references and any startup scripts referencing the old name'
+    # Connectors
+    - comment_path: $.connectors.span_metrics
+      comment_text: '# [P3-01 UPGRADE v0.151] spanmetrics renamed to span_metrics'
+    - comment_path: $.connectors.service_graph
+      comment_text: '# [P3-01 UPGRADE v0.151] servicegraph renamed to service_graph'
+    # Exporters
+    - comment_path: $.exporters.load_balancing
+      comment_text: '# [P3-01 UPGRADE v0.153] loadbalancing renamed to load_balancing'
+  before: |
+    # Old camelCase / joined names (deprecated aliases — will be removed in future):
+    receivers:
+      filelog: {}           # → file_log (since 0.149)
+      fluentforward: {}     # → fluent_forward (since 0.151)
+      hostmetrics: {}       # → host_metrics (since 0.151)
+      k8sobjects: {}        # → k8s_objects (since 0.151)
+      kubeletstats: {}      # → kubelet_stats (since 0.152)
+      kafkametrics: {}      # → kafka_metrics (since 0.152)
+      httpcheck: {}         # → http_check (since 0.150)
+      tcpcheck: {}          # → tcp_check (since 0.152)
+      tcplog: {}            # → tcp_log (since 0.150)
+      udplog: {}            # → udp_log (since 0.150)
+      windowseventlog: {}   # → windows_event_log (since 0.150)
+      sshcheck: {}          # → ssh_check (since 0.151)
+      tlscheck: {}          # → tls_check (since 0.150)
+      filestats: {}         # → file_stats (since 0.151)
+      namedpipe: {}         # → named_pipe (since 0.150)
+      cloudfoundry: {}      # → cloud_foundry (since 0.152)
+      azureeventhub: {}     # → azure_event_hub (since 0.145)
+      mongodbatlas: {}      # → mongodb_atlas (since 0.145)
+    processors:
+      k8sattributes: {}     # → k8s_attributes (since 0.146)
+      metricstransform: {}  # → metrics_transform (since 0.152)
+      logdedup: {}          # → log_dedup (since 0.151)
+      resourcedetection: {} # → resource_detection (since 0.153)
+    connectors:
+      spanmetrics: {}       # → span_metrics (since 0.151)
+      servicegraph: {}      # → service_graph (since 0.151)
+    exporters:
+      loadbalancing: {}     # → load_balancing (since 0.153)
+  after: |
+    # New canonical snake_case names — also renamed in all service.pipelines.* arrays:
+    receivers:
+      file_log: {}
+      fluent_forward: {}
+      host_metrics: {}
+      k8s_objects: {}
+      kubelet_stats: {}
+      kafka_metrics: {}
+      http_check: {}
+      tcp_check: {}
+      tcp_log: {}
+      udp_log: {}
+      windows_event_log: {}
+      ssh_check: {}
+      tls_check: {}
+      file_stats: {}
+      named_pipe: {}
+      cloud_foundry: {}
+      azure_event_hub: {}
+      mongodb_atlas: {}
+    processors:
+      k8s_attributes: {}
+      metrics_transform: {}
+      log_dedup: {}
+      resource_detection: {}
+    connectors:
+      span_metrics: {}
+      service_graph: {}
+    exporters:
+      load_balancing: {}
+guidance: |
+  Rename all occurrences of deprecated component names in:
+  - Component definitions (receivers:, processors:, exporters:, connectors: blocks)
+  - All pipeline receivers/processors/exporters lists under service: pipelines:
+  - Any commented-out configuration blocks
+
+  Use the canonical snake_case names. Deprecated aliases still work in 0.153 but will
+  be removed in a future release, causing startup failure.
+
+  Not renamed (confirmed safe through v0.153): windowsservices, vcenter, jaeger, otlp,
+  zipkin, prometheus, smartagent, nop, splunk_hec, otlphttp, signalfx (exporter), batch,
+  memory_limiter, resource, attributes, filter.
+description: >-
+  Many component names were renamed to snake_case. Deprecated aliases still work in 0.153
+  but will be removed in a future release. Rename all occurrences in both the component
+  definition blocks and all pipeline references (service.pipelines.*). Also rename any
+  occurrences in commented-out blocks to keep the config consistent.
+  Not renamed (confirmed clean through v0.153): windowsservices, vcenter, jaeger, otlp,
+  zipkin, prometheus, smartagent, nop, splunk_hec, otlphttp, signalfx (exporter), batch,
+  memory_limiter, resource, attributes, filter.

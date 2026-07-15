@@ -1,0 +1,20 @@
+cases:
+  - name: "fires when windows_event_log receiver present"
+    config: |
+      receivers:
+        windows_event_log:
+          channel: System
+    should_fire: true
+
+  - name: "fires when windowseventlog receiver present"
+    config: |
+      receivers:
+        windowseventlog:
+          channel: Application
+    should_fire: true
+
+  - name: "silent when neither present"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

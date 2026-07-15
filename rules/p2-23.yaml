@@ -1,0 +1,50 @@
+id: P2-23
+category: p2
+introduced: "0.121"
+title: "awss3 Exporter — s3_partition Replaced by s3_partition_format"
+look_for:
+  - path: $.exporters.awss3.s3uploader.s3_partition
+    match: exists
+  - path: $.exporters.awss3.s3uploader.s3_partition
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.exporters.awss3
+      comment_text: |
+        # UPGRADE(P2-23 v0.121): s3_partition replaced by s3_partition_format (strftime string).
+        # minute → "year=%Y/month=%m/day=%d/hour=%H/minute=%M"
+        # hour   → "year=%Y/month=%m/day=%d/hour=%H"
+        # day    → "year=%Y/month=%m/day=%d"
+        # ACTION: rename s3_partition → s3_partition_format with the equivalent strftime value.
+  before: |
+    exporters:
+      awss3:
+        s3uploader:
+          s3_partition: minute    # REMOVED in 0.121
+  after: |
+    # After 0.121 — s3_partition_format with strftime string:
+    exporters:
+      awss3:
+        s3uploader:
+          s3_partition_format: "year=%Y/month=%m/day=%d/hour=%H/minute=%M"
+          # This is the default value — same as old s3_partition: minute
+
+    # Other common mappings:
+    # s3_partition: hour  → s3_partition_format: "year=%Y/month=%m/day=%d/hour=%H"
+    # s3_partition: day   → s3_partition_format: "year=%Y/month=%m/day=%d"
+guidance: |
+  Replace s3_partition: <preset> with the equivalent s3_partition_format: strftime string:
+  - s3_partition: minute → s3_partition_format: "year=%Y/month=%m/day=%d/hour=%H/minute=%M"
+  - s3_partition: hour   → s3_partition_format: "year=%Y/month=%m/day=%d/hour=%H"
+  - s3_partition: day    → s3_partition_format: "year=%Y/month=%m/day=%d"
+
+  The "minute" format above is also the default value, so if you were using the default,
+  you can simply remove the s3_partition field entirely.
+description: >-
+  In 0.121, the s3_partition option in the awss3 exporter was replaced by s3_partition_format.
+  The old preset-based s3_partition key (with values like minute, hour, day) causes a startup
+  error in 0.121+. Replace s3_partition with s3_partition_format using the equivalent strftime
+  format string. The minute preset maps to year=%Y/month=%m/day=%d/hour=%H/minute=%M,
+  the hour preset to year=%Y/month=%m/day=%d/hour=%H, and the day preset to year=%Y/month=%m/day=%d.

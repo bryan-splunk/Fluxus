@@ -1,0 +1,27 @@
+cases:
+  - name: "fires when resource processor present"
+    config: |
+      processors:
+        resource:
+          attributes:
+            - key: env
+              value: prod
+              action: insert
+    should_fire: true
+
+  - name: "fires when prometheus receiver present"
+    config: |
+      receivers:
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: my-app
+                static_configs:
+                  - targets: ["localhost:8080"]
+    should_fire: true
+
+  - name: "silent when neither present"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

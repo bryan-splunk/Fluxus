@@ -1,0 +1,65 @@
+id: P2-14
+category: p2
+introduced: "0.151"
+title: "signalfx Exporter — Default URL Domain Changed to observability.splunkcloud.com"
+look_for:
+  - path: $.exporters.signalfx.realm
+    match: exists
+  - path: $.exporters.signalfx
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.exporters.signalfx
+      comment_text: |
+        # UPGRADE(P2-14 v0.151): signalfx exporter default URL domain changed from
+        # signalfx.com to observability.splunkcloud.com.
+        # ACTION REQUIRED:
+        #   1. Add *.observability.splunkcloud.com to all firewall/proxy allowlists.
+        #   2. If SPLUNK_API_URL / SPLUNK_INGEST_URL env vars are set, update their domains.
+        #   3. Review any header comments or docs referencing *.signalfx.com.
+        # No YAML key change required — verify connectivity after upgrade.
+  before: |
+    # Before 0.151 (realm: us0 default endpoints):
+    # api_url:    https://api.us0.signalfx.com
+    # ingest_url: https://ingest.us0.signalfx.com
+    exporters:
+      signalfx:
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+        realm: us0
+  after: |
+    exporters:
+      signalfx:
+        # UPGRADE(P2-14 v0.151): signalfx exporter default URL domain changed from
+        # signalfx.com to observability.splunkcloud.com.
+        # ACTION REQUIRED:
+        #   1. Add *.observability.splunkcloud.com to all firewall/proxy allowlists.
+        #   2. If SPLUNK_API_URL / SPLUNK_INGEST_URL env vars are set, update their domains.
+        #   3. Review any header comments or docs referencing *.signalfx.com.
+        # No YAML key change required — verify connectivity after upgrade.
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+        realm: us0
+guidance: |
+  Three actions required when using signalfx exporter with realm: and no explicit URLs:
+
+  1. Add *.observability.splunkcloud.com to firewall allowlists (egress rules).
+     Old domain: *.signalfx.com
+     New domain: *.observability.splunkcloud.com
+
+  2. Update environment variables if set:
+     SPLUNK_API_URL → https://api.<realm>.observability.splunkcloud.com
+     SPLUNK_INGEST_URL → https://ingest.<realm>.observability.splunkcloud.com
+
+  3. Update any header comments or documentation referencing signalfx.com URLs.
+
+  If you have explicit api_url and ingest_url set in the exporter config, no change is
+  needed there — the default URL change only affects realm-based auto-configuration.
+description: >-
+  In 0.151, the default URL domain for the signalfx exporter changed from signalfx.com to
+  observability.splunkcloud.com. This affects any config using realm without explicit
+  api_url or ingest_url overrides, and also applies to the SPLUNK_API_URL and
+  SPLUNK_INGEST_URL environment variables. Firewall allowlists that restrict to *.signalfx.com
+  will block the collector after this change. Add *.observability.splunkcloud.com to all
+  relevant firewall allowlists and update environment variable references.
+see_also:
+  - P2-16

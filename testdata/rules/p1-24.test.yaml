@@ -1,0 +1,20 @@
+cases:
+  - name: "fires when service.telemetry.address present"
+    config: |
+      service:
+        telemetry:
+          address: 0.0.0.0:8888
+    should_fire: true
+
+  - name: "silent when telemetry uses metrics.readers"
+    config: |
+      service:
+        telemetry:
+          metrics:
+            readers:
+              - pull:
+                  exporter:
+                    prometheus:
+                      host: 0.0.0.0
+                      port: 8888
+    should_fire: false

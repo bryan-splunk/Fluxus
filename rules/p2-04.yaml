@@ -1,0 +1,41 @@
+id: P2-04
+category: p2
+introduced: "0.142"
+title: "cumulativetodelta Processor — max_staleness Default Changed to 1h"
+logic: and
+look_for:
+  - path: $.processors.cumulativetodelta
+    match: exists
+  - path: $.processors.cumulativetodelta.max_staleness
+    match: absent
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.processors.cumulativetodelta
+      comment_text: |
+        # UPGRADE(P2-04 v0.142): cumulativetodelta max_staleness default changed 0 → 1h.
+        # Series unseen for 1+ hour are now dropped from state — may cause gaps for sparse series.
+        # To restore infinite retention: add 'max_staleness: 0'  (set explicitly below if needed).
+  before: |
+    processors:
+      cumulativetodelta: {}
+  after: |
+    # After 0.142 — default is 1h. Series unseen for 1+ hour are dropped from state.
+    # To restore infinite retention (pre-0.142 behavior):
+    processors:
+      cumulativetodelta:
+        max_staleness: 0   # 0 = infinite retention
+    # New default if omitted: max_staleness: 1h
+guidance: |
+  If you need to preserve the pre-0.142 behavior of infinite series retention, explicitly
+  set max_staleness: 0 in the cumulativetodelta processor config.
+
+  The new default (1 hour) is intentional to prevent unbounded memory growth. If you have
+  long-running counter series that are active but sampled infrequently (longer than 1h
+  between samples), you may see gaps in those series after upgrading without this setting.
+description: >-
+  In 0.142, the default value of max_staleness in the cumulativetodelta processor changed
+  from 0 (infinite) to 1 hour. Series that are not seen for more than 1 hour are now
+  dropped from state, which prevents unbounded memory growth. This is intentional behavior
+  but may cause gaps in data for long-running or sparse series. If you need to preserve
+  the old infinite retention behavior, explicitly set max_staleness: 0.

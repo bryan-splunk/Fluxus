@@ -1,0 +1,51 @@
+id: P1-11
+category: p1
+introduced: "0.132"
+title: "postgresql Receiver — Query Collection Flags Removed"
+look_for:
+  - path: $.receivers.postgresql.query_sample_collection
+    match: exists
+  - path: $.receivers.postgresql.top_query_collection
+    match: exists
+  - path: $.receivers.postgresql.query_sample_collection
+    match: exists
+    in_comments: true
+  - path: $.receivers.postgresql.top_query_collection
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete query_sample_collection block — causes startup failure if present.
+    - from: $.receivers.postgresql.query_sample_collection
+      to: ""
+    # Delete top_query_collection block — causes startup failure if present.
+    - from: $.receivers.postgresql.top_query_collection
+      to: ""
+  before: |
+    receivers:
+      postgresql:
+        query_sample_collection:
+          enabled: true
+        top_query_collection:
+          enabled: true
+  after: |
+    receivers:
+      postgresql: {}
+      # query_sample_collection and top_query_collection removed.
+      # Both collections are now always enabled.
+      # Use a filter processor downstream to selectively drop events.
+guidance: |
+  Remove the query_sample_collection: and top_query_collection: entries from the
+  postgresql receiver — both collections are now always enabled and cannot be disabled
+  at the config level.
+
+  If you need to suppress specific query data, add a filter processor downstream of
+  the postgresql receiver to drop the unwanted metrics or logs.
+description: >-
+  The postgresql receiver fields query_sample_collection and top_query_collection were
+  removed in 0.132. The collector fails to start if either field is present. Remove them
+  entirely — both query collections are now always enabled. If you need to suppress specific
+  events, add a filter processor downstream.
+see_also:
+  - P1-19

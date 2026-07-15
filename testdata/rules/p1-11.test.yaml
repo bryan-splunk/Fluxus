@@ -1,0 +1,29 @@
+cases:
+  - name: "fires when postgresql receiver has query_sample_collection"
+    config: |
+      receivers:
+        postgresql:
+          endpoint: localhost:5432
+          query_sample_collection:
+            enabled: true
+    should_fire: true
+    apply_not_contains:
+      - "query_sample_collection"
+
+  - name: "fires when postgresql receiver has top_query_collection"
+    config: |
+      receivers:
+        postgresql:
+          endpoint: localhost:5432
+          top_query_collection:
+            enabled: true
+    should_fire: true
+    apply_not_contains:
+      - "top_query_collection"
+
+  - name: "silent when postgresql has neither removed field"
+    config: |
+      receivers:
+        postgresql:
+          endpoint: localhost:5432
+    should_fire: false

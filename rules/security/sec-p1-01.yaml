@@ -1,0 +1,66 @@
+id: SEC-P1-01
+phase: security
+category: p1
+introduced: "0.0.0"
+title: "Hardcoded Credential in prometheus Receiver scrape_config"
+logic: and
+look_for:
+  # Require the prometheus receiver to be present.
+  - path: $.receivers.prometheus
+    match: exists
+  # Detect a single-quoted password value that does not start with $ (env var reference).
+  # Pattern: password: 'someLiteralValue'  — first char inside quotes is not $ or '
+  - raw_pattern: "(?m)password\\s*:\\s*'[^$'][^']{2,}'"
+migration:
+  strategy: inform_only
+  key_moves:
+    - comment_path: $.receivers.prometheus
+      comment_once: true
+      comment_text: |
+        # [SEC-P1-01 SECURITY WARNING] Hardcoded credential detected in prometheus scrape_config.
+        # Literal passwords in YAML config files pose a security risk if the file is
+        # committed to source control or accessible to unauthorised users.
+        # Replace all literal passwords and tokens with environment variable references:
+        #   password: "${env:PROMETHEUS_PASSWORD}"
+        #   token: "${env:BEARER_TOKEN}"
+        # See: https://opentelemetry.io/docs/collector/configuration/#environment-variables
+  before: |
+    # Prometheus with hardcoded basic_auth credential (insecure):
+    receivers:
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: netscaler
+              basic_auth:
+                username: admin
+                password: 'my-secret-password'   # INSECURE
+  after: |
+    # Replace with environment variable reference:
+    receivers:
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: netscaler
+              basic_auth:
+                username: "${env:PROMETHEUS_USER}"
+                password: "${env:PROMETHEUS_PASSWORD}"
+guidance: |
+  Replace all literal password values in prometheus receiver scrape_config basic_auth blocks
+  with environment variable references using the ${env:VAR_NAME} syntax:
+    password: "${env:PROMETHEUS_PASSWORD}"
+    token: "${env:BEARER_TOKEN}"
+
+  Environment variable references are the only secure way to supply credentials in OTel
+  Collector config files. They keep secrets out of source control, log files, and config
+  dumps accessible via the zpages endpoint.
+
+  See the OpenTelemetry Collector documentation on environment variable substitution:
+  https://opentelemetry.io/docs/collector/configuration/#environment-variables
+description: >-
+  Detects a hardcoded single-quoted password value inside a prometheus receiver's
+  scrape_config basic_auth block. Literal credential values in YAML config files are
+  a security risk: they may be committed to source control, logged, or accessed by
+  unauthorised users. Replace all literal passwords, tokens, and secrets with
+  environment variable references using the ${env:VAR_NAME} syntax supported by the
+  OpenTelemetry Collector. No config structure change is required — this is a security
+  hygiene notice only.

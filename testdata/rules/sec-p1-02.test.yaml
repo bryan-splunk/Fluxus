@@ -1,0 +1,49 @@
+# SEC-P1-02 uses raw_pattern only (no path-based look_for).
+# Fires on: unquoted or double-quoted password/passwd/api_key literals not starting with $.
+cases:
+  - name: "fires when unquoted password literal present"
+    config: |
+      receivers:
+        vcenter:
+          endpoint: https://vcenter.example.com
+          username: admin
+          password: Admin1234!
+    should_fire: true
+
+  - name: "fires when double-quoted password literal present"
+    config: |
+      receivers:
+        vcenter:
+          endpoint: https://vcenter.example.com
+          username: admin
+          password: "Admin1234!"
+    should_fire: true
+
+  - name: "fires when api_key literal present"
+    config: |
+      receivers:
+        some_receiver:
+          api_key: abcdef1234567890
+    should_fire: true
+
+  - name: "silent when password is env var reference (unquoted)"
+    config: |
+      receivers:
+        vcenter:
+          endpoint: https://vcenter.example.com
+          password: ${env:VCENTER_PASSWORD}
+    should_fire: false
+
+  - name: "silent when password is env var reference (double-quoted)"
+    config: |
+      receivers:
+        vcenter:
+          endpoint: https://vcenter.example.com
+          password: "${env:VCENTER_PASSWORD}"
+    should_fire: false
+
+  - name: "silent when no password or api_key fields"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

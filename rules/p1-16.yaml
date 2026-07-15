@@ -1,0 +1,68 @@
+id: P1-16
+category: p1
+introduced: "0.149"
+title: "prometheus Receiver — Removed Config Options"
+look_for:
+  - path: $.receivers.prometheus.use_start_time_metric
+    match: exists
+  - path: $.receivers.prometheus.start_time_metric_regex
+    match: exists
+  - path: $.receivers.prometheus.report_extra_scrape_metrics
+    match: exists
+  - path: $.receivers.prometheus.use_start_time_metric
+    match: exists
+    in_comments: true
+  - path: $.receivers.prometheus.start_time_metric_regex
+    match: exists
+    in_comments: true
+  - path: $.receivers.prometheus.report_extra_scrape_metrics
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete use_start_time_metric — removed in 0.143; causes startup failure.
+    - from: $.receivers.prometheus.use_start_time_metric
+      to: ""
+    # Delete start_time_metric_regex — removed in 0.143.
+    - from: $.receivers.prometheus.start_time_metric_regex
+      to: ""
+    # Delete report_extra_scrape_metrics — removed in 0.149.
+    - from: $.receivers.prometheus.report_extra_scrape_metrics
+      to: ""
+  before: |
+    receivers:
+      prometheus:
+        use_start_time_metric: true
+        start_time_metric_regex: ".*_start"
+        report_extra_scrape_metrics: true
+  after: |
+    receivers:
+      prometheus: {}
+      # use_start_time_metric and start_time_metric_regex removed in 0.143
+      # report_extra_scrape_metrics removed in 0.149
+
+    # Replacement for start time adjustment:
+    processors:
+      metricstarttime: {}
+guidance: |
+  Remove the following keys from all prometheus receiver definitions:
+  - use_start_time_metric: (removed in 0.143)
+  - start_time_metric_regex: (removed in 0.143)
+  - report_extra_scrape_metrics: (removed in 0.149)
+
+  If you need start time adjustment behavior (previously provided by use_start_time_metric),
+  add the metricstarttime processor to your prometheus pipeline:
+    processors:
+      metricstarttime: {}
+  Then add metricstarttime to the processors list in your prometheus pipeline definition.
+
+  For report_extra_scrape_metrics, use PromConfig.ScrapeConfigs.ExtraScrapeMetrics instead.
+description: >-
+  Three config options were removed from the prometheus receiver: use_start_time_metric
+  and start_time_metric_regex (removed in 0.143), and report_extra_scrape_metrics (removed
+  in 0.149). The collector fails to start if any of these are present. Remove them from
+  the receiver config. For start time adjustment behavior, add a metricstarttime processor
+  to the pipeline.
+see_also:
+  - P2-07

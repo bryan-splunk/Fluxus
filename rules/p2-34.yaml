@@ -1,0 +1,111 @@
+id: P2-34
+category: p2
+introduced: "0.123"
+title: "kafka Exporter + kafkametricsreceiver — Client ID and Auth Changes"
+look_for:
+  - path: $.exporters.kafka
+    match: exists
+  - path: $.receivers.kafkametrics
+    match: exists
+  - path: $.receivers.kafka_metrics
+    match: exists
+  - path: $.exporters.kafka.auth.plain_text
+    match: exists
+  - path: $.receivers.kafkametrics.refresh_frequency
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.exporters.kafka
+      comment_text: |
+        # UPGRADE(P2-34 v0.123): kafka client_id default changed "sarama" → "otel-collector".
+        # Kafka ACLs granting access to client ID "sarama" will silently stop matching.
+        # ACTION: pin client_id: sarama here (or update Kafka ACLs to otel-collector).
+    - comment_path: $.receivers.kafka_metrics
+      comment_text: |
+        # UPGRADE(P2-34 v0.123): kafka_metrics client_id default changed "sarama" → "otel-collector".
+        # ACTION: pin client_id: sarama (or update Kafka ACLs). Also: auth.plain_text deprecated → auth.sasl.
+        # Also: refresh_frequency deprecated → metadata.refresh_interval.
+    - comment_path: $.receivers.kafkametrics
+      comment_text: |
+        # UPGRADE(P2-34 v0.123): kafka client_id default changed "sarama" → "otel-collector".
+        # ACTION: pin client_id: sarama (or update Kafka ACLs). refresh_frequency → metadata.refresh_interval.
+  before: |
+    exporters:
+      kafka:
+        brokers: [kafka:9092]
+        # No client_id — was "sarama", now "otel-collector"
+
+    # 2. auth.plain_text deprecated — use auth.sasl with mechanism: PLAIN:
+    receivers:
+      kafka:
+        auth:
+          plain_text:
+            username: myuser
+            password: mypass
+
+    # 3. kafkametricsreceiver refresh_frequency deprecated:
+    receivers:
+      kafkametrics:
+        refresh_frequency: 30s
+  after: |
+    # 1. Pin client_id to preserve ACL compatibility OR update Kafka ACLs:
+    exporters:
+      kafka:
+        brokers: [kafka:9092]
+        client_id: sarama   # preserves legacy ACL match
+
+    receivers:
+      kafkametrics:
+        client_id: sarama   # preserves legacy ACL match
+
+    # 2. Migrate auth.plain_text → auth.sasl (PLAIN):
+    receivers:
+      kafka:
+        auth:
+          sasl:
+            mechanism: PLAIN
+            username: myuser
+            password: mypass
+
+    # 3. Rename refresh_frequency → metadata.refresh_interval:
+    receivers:
+      kafkametrics:
+        metadata:
+          refresh_interval: 30s
+guidance: |
+  Three sub-changes to address for kafka exporter and kafkametricsreceiver:
+
+  1. Kafka ACL / client_id change (0.123):
+     The default client_id changed from "sarama" to "otel-collector" for the kafka
+     exporter and kafkametricsreceiver. If Kafka broker ACLs grant access by client ID,
+     either pin client_id: sarama or update the ACLs to allow "otel-collector".
+
+  2. Migrate auth.plain_text → auth.sasl (PLAIN):
+     receivers/exporters:
+       kafka:
+         auth:
+           sasl:
+             mechanism: PLAIN
+             username: myuser
+             password: mypass
+
+  3. Rename kafkametricsreceiver refresh_frequency → metadata.refresh_interval:
+     receivers:
+       kafkametrics:
+         metadata:
+           refresh_interval: 30s
+
+  See also P2-01 which covers the same client_id change for the kafka RECEIVER (Sarama)
+  that changed in the later 0.130 release.
+description: >-
+  In 0.123, three changes affected the kafka exporter and kafkametricsreceiver: (1) the
+  default client_id changed from "sarama" to "otel-collector" — Kafka ACLs granting access
+  by client ID "sarama" will silently stop matching, causing the collector to run but send
+  or receive nothing; (2) auth.plain_text was deprecated on all Kafka components in favour
+  of auth.sasl with mechanism: PLAIN; (3) kafkametricsreceiver field refresh_frequency was
+  deprecated in favour of metadata.refresh_interval. Address (1) by pinning client_id or
+  updating Kafka ACLs. Migrate (2) and (3) to avoid future startup failures.
+see_also:
+  - P2-01
+  - P2-29

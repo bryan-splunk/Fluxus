@@ -1,0 +1,58 @@
+id: P2-19
+category: p2
+introduced: "0.120"
+title: "prometheus Receiver — Prometheus 3.0 Metric Name Changes (dots vs underscores)"
+look_for:
+  - path: $.receivers.prometheus
+    match: exists
+migration:
+  # No YAML config change required — inject a comment so dashboard/alert owners are notified.
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.prometheus
+      comment_once: true
+      comment_text: |
+        # [P2-19 UPGRADE v0.120] Prometheus 3.0: metric names now use dots instead of underscores.
+        #   Example: processor_filter_datapoints_filtered → processor_filter_datapoints.filtered
+        #   Update all dashboard queries, alert rules, and OTTL statements referencing old names.
+  before: |
+    # Before 0.120 — dots in metric names were escaped to underscores:
+    # processor_filter_datapoints_filtered
+    # deltatocumulative_streams_tracked
+    # service_name, service_instance_id, service_version (resource attrs on self-monitoring)
+  after: |
+    # After 0.120 — Prometheus 3.0 scraper uses dots natively:
+    # processor_filter_datapoints.filtered
+    # deltatocumulative.streams.tracked
+    # service.name, service.instance.id, service.version (resource attrs)
+    #
+    # No YAML config change required in the collector.
+    # Update all dashboard queries, alert rules, and OTTL statements that reference old names.
+guidance: |
+  Update all dashboard queries, alert rules, and OTTL filter/transform statements that
+  reference the affected metric names. Prometheus 3.0 (adopted in 0.120) no longer
+  escapes dots in metric names — underscores in place of dots now use dots.
+
+  Key renames:
+  - processor_filter_datapoints_filtered → processor_filter_datapoints.filtered
+  - processor_filter_logs_filtered       → processor_filter_logs.filtered
+  - processor_filter_spans_filtered      → processor_filter_spans.filtered
+  - deltatocumulative_streams_tracked    → deltatocumulative.streams.tracked
+  (and other deltatocumulative.* metrics — see full list in UPGRADE-KNOWLEDGE.md)
+
+  Resource attribute renames (scraping self-monitoring):
+  - service_name     → service.name
+  - service_instance_id → service.instance.id
+  - service_version  → service.version
+
+  No YAML config change is required in the collector configuration.
+description: >-
+  In 0.120, the prometheus receiver adopted the Prometheus 3.0 scraper which no longer
+  escapes dots in metric names. Metrics that previously had underscores in place of dots
+  now use dots (e.g., processor_filter_datapoints_filtered → processor_filter_datapoints.filtered,
+  deltatocumulative_streams_tracked → deltatocumulative.streams.tracked). Resource attributes
+  for self-monitoring also changed (service_name → service.name, etc.). No collector YAML
+  config change is required — update all dashboard queries, alert rules, and OTTL filter
+  or transform statements that reference the old underscore-based metric names.
+see_also:
+  - P2-18

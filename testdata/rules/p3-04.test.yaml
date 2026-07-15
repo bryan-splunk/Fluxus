@@ -1,0 +1,20 @@
+cases:
+  - name: "fires when kubeletstats present"
+    config: |
+      receivers:
+        kubeletstats:
+          collection_interval: 20s
+    should_fire: true
+
+  - name: "fires when kubelet_stats present"
+    config: |
+      receivers:
+        kubelet_stats:
+          collection_interval: 20s
+    should_fire: true
+
+  - name: "silent when no kubelet receiver"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

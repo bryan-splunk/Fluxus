@@ -1,0 +1,22 @@
+cases:
+  - name: "fires when mysql receiver present"
+    config: |
+      receivers:
+        mysql:
+          endpoint: localhost:3306
+          username: otel
+          password: secret
+    should_fire: true
+
+  - name: "fires when postgresql receiver present"
+    config: |
+      receivers:
+        postgresql:
+          endpoint: localhost:5432
+    should_fire: true
+
+  - name: "silent when neither present"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false
