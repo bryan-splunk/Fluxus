@@ -1,0 +1,46 @@
+id: P3-10
+category: p3
+introduced: "0.148"
+title: "truncate_all OTTL Function — UTF-8 Safe by Default"
+look_for:
+  - path: $.processors.transform
+    match: exists
+  - path: $.processors.filter
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.processors.transform
+      comment_text: |
+        # UPGRADE(P3-10 v0.148): OTTL truncate_all() is now UTF-8 safe by default (may produce slightly shorter results).
+        # To restore old byte-level truncation: truncate_all(attributes, 100, false)
+        # Generally safe — only affects multi-byte character strings near the limit.
+    - comment_path: $.processors.filter
+      comment_text: |
+        # UPGRADE(P3-10 v0.148): OTTL truncate_all() is UTF-8 safe by default. Add 'false' arg to restore byte truncation.
+    # truncate_all(attributes, 100) — always truncated at exactly 100 bytes
+  after: |
+    # After 0.148 — truncate_all is UTF-8 safe by default:
+    # truncate_all(attributes, 100) — may produce strings slightly shorter than 100 bytes
+    #                                  to avoid splitting multi-byte characters
+
+    # To restore old byte-level truncation:
+    # truncate_all(attributes, 100, false)
+guidance: |
+  The truncate_all() OTTL function now truncates UTF-8 safely by default, meaning results
+  may be slightly shorter than the limit to avoid splitting multi-byte characters.
+
+  If you need the old byte-level truncation behavior (exact byte count, may split
+  multi-byte characters), pass false as the third argument:
+    truncate_all(attributes, 100, false)
+
+  If your use case tolerates slightly shorter strings to preserve character boundaries,
+  no action is required — the new default is generally safer.
+description: >-
+  In 0.148, the OTTL truncate_all() function changed to be UTF-8 safe by default. Results
+  may be slightly shorter than the specified limit to avoid splitting multi-byte characters.
+  This is generally a safe behavior change with no data loss. If you specifically need the
+  old byte-level truncation behavior (e.g., to guarantee exact byte lengths for downstream
+  systems with hard byte limits), pass false as the third argument: truncate_all(attributes, 100, false).
+see_also:
+  - P3-09

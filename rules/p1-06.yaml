@@ -1,0 +1,54 @@
+id: P1-06
+category: p1
+introduced: "0.130"
+title: "OTLP Exporter — Deprecated batcher Block Removed"
+look_for:
+  - path: $.exporters.otlp.batcher
+    match: exists
+  - path: $.exporters["otlp/*"].batcher
+    match: exists
+  - path: $.exporters.otlp.batcher
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Move min_size_items from batcher to sending_queue.batch (preserves user value).
+    # Note: P1-23 (0.123) renamed min_size_items → min_size, so target uses min_size.
+    - from: $.exporters.otlp.batcher.min_size_items
+      to: $.exporters.otlp.sending_queue.batch.min_size
+    # Move min_size_bytes if present (field name was not renamed by P1-23).
+    - from: $.exporters.otlp.batcher.min_size_bytes
+      to: $.exporters.otlp.sending_queue.batch.min_size_bytes
+    # Move max_size_items — renamed to max_size by P1-23 (0.123).
+    - from: $.exporters.otlp.batcher.max_size_items
+      to: $.exporters.otlp.sending_queue.batch.max_size
+    # Drop the now-empty batcher block entirely.
+    - from: $.exporters.otlp.batcher
+      to: ""
+  before: |
+    exporters:
+      otlp:
+        batcher:
+          enabled: true
+          min_size_items: 100
+  after: |
+    exporters:
+      otlp:
+        sending_queue:
+          batch:
+            min_size: 100
+            flush_timeout: 200ms
+guidance: |
+  Remove the batcher: block from any otlp or otlp/<name> exporter definition entirely.
+  Use sending_queue::batch instead for batching control.
+  The min_size_items and max_size_items fields inside batcher: also became min_size and
+  max_size respectively under sending_queue::batch — see P1-23 for those renames.
+description: >-
+  The batcher block nested inside otlp (and otlp/<name>) exporter definitions was removed
+  in 0.130. Any config containing a batcher key under an otlp exporter will cause the
+  collector to fail to start. Remove the batcher block and migrate batching configuration
+  to sending_queue::batch instead.
+see_also:
+  - P1-07
+  - P1-23

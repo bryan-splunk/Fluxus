@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en" x-data="app()" class="bg-neutral-950 text-white min-h-screen">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FLUXUS — Collector upgrade process</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .step-active { border-color: #3b82f6; background: #1e3a5f; }
+    .step-done   { border-color: #22c55e; background: #14532d; }
+    .step-idle   { border-color: #404040; background: #1a1a1a; }
+    .pill-p1 { background:#7f1d1d; color:#fca5a5; border-radius:4px; padding:2px 8px; font-size:11px; font-weight:700; }
+    .pill-p2 { background:#78350f; color:#fde68a; border-radius:4px; padding:2px 8px; font-size:11px; font-weight:700; }
+    .pill-p3 { background:#14532d; color:#86efac; border-radius:4px; padding:2px 8px; font-size:11px; font-weight:700; }
+    pre { background:#111; border:1px solid #333; border-radius:6px; padding:12px; overflow-x:auto; font-size:12px; }
+    code { font-family: 'Fira Code', monospace; }
+    .report-body h3 { font-size:1rem; font-weight:700; margin:1.5rem 0 0.5rem; color:#93c5fd; }
+    .report-body hr { border-color:#333; margin:1.5rem 0; }
+    .report-body table { width:100%; border-collapse:collapse; font-size:12px; }
+    .report-body th { background:#1e293b; padding:6px 10px; text-align:left; }
+    .report-body td { padding:6px 10px; border-bottom:1px solid #222; }
+    .tab-active  { border-bottom:2px solid #3b82f6; color:#93c5fd; background:#1e3a5f; }
+    .tab-idle    { border-bottom:2px solid transparent; color:#9ca3af; }
+    .tab-idle:hover { color:#e5e7eb; background:#1a1a1a; }
+    .change-card { border:1px solid #2a2a2a; border-radius:8px; padding:14px 16px; margin-bottom:10px; background:#111; }
+    .change-card-cc { border-color:#1e3a2a; }
+    .change-card-f  { border-color:#1e2a3a; }
+    .scan-table { width:100%; border-collapse:collapse; font-size:11px; }
+    .scan-table th { background:#1e293b; padding:5px 8px; text-align:left; color:#94a3b8; font-weight:600; }
+    .scan-table td { padding:5px 8px; border-bottom:1px solid #1e1e1e; }
+    .scan-table tr:last-child td { border-bottom:none; }
+  </style>
+</head>
+<body class="min-h-screen" x-cloak>
+
+<div class="max-w-5xl mx-auto px-4 py-8">
+
+  <!-- Header -->
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-white">FLUXUS <span class="text-neutral-500 font-normal text-lg">Collector upgrade process</span></h1>
+    <p class="text-neutral-400 text-sm mt-1">Automated Splunk OTel Collector config upgrade tool · v0.120 → v0.153</p>
+  </div>
+
+  <!-- Step indicators -->
+  <div class="flex gap-3 mb-8">
+    <template x-for="(s, i) in steps" :key="i">
+      <div class="flex-1 rounded-lg border px-3 py-2 text-xs cursor-pointer transition-all"
+           :class="step === i ? 'step-active' : (step > i ? 'step-done' : 'step-idle')"
+           @click="step > i && (step = i)">
+        <div class="font-bold" x-text="(i+1) + '. ' + s.label"></div>
+        <div class="text-neutral-400 mt-0.5" x-text="s.desc"></div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Step 1: Upload -->
+  <div x-show="step === 0">
+    <h2 class="text-lg font-semibold mb-4">Upload Configuration Files</h2>
+
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div>
+        <label for="target-version" class="text-sm text-neutral-400 block mb-1">Target Version <span class="text-neutral-600">(optional — default: latest)</span></label>
+        <input id="target-version" x-model="targetVersion" type="text" placeholder="e.g. 0.145"
+               class="w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2 text-sm text-white">
+      </div>
+      <div class="flex items-end gap-6 flex-wrap">
+        <label class="flex items-center gap-2 cursor-pointer text-sm">
+          <input type="checkbox" x-model="includeComments" class="accent-blue-500">
+          <span>Scan commented-out config sections</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer text-sm">
+          <input type="checkbox" x-model="includeGuidance" class="accent-blue-500">
+          <span>Include detailed guidance in report</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- File drop zone -->
+    <div class="border-2 border-dashed border-neutral-700 rounded-xl p-8 text-center mb-4
+                hover:border-blue-600 transition-colors"
+         @dragover.prevent @drop.prevent="handleDrop($event)">
+      <p class="text-neutral-400 mb-3">Drop YAML config files here, or</p>
+      <label class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium">
+        Browse files
+        <input type="file" multiple accept=".yaml,.yml" class="hidden" @change="handleFileInput($event)">
+      </label>
+    </div>
+
+    <!-- Uploaded files list -->
+    <template x-if="Object.keys(files).length > 0">
+      <div class="mb-4 space-y-2">
+        <template x-for="(content, name) in files" :key="name">
+          <div class="flex items-center justify-between bg-neutral-900 rounded px-3 py-2 text-sm">
+            <span class="text-green-400">✓</span>
+            <span class="flex-1 ml-2 text-neutral-300 font-mono" x-text="name"></span>
+            <span class="text-neutral-500 text-xs" x-text="content.length + ' bytes'"></span>
+            <button class="ml-3 text-neutral-600 hover:text-red-400 text-xs" @click="delete files[name]">remove</button>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium disabled:opacity-40"
+            :disabled="Object.keys(files).length === 0 || loading"
+            @click="runAssess">
+      <span x-show="!loading">Run Pre-Assessment →</span>
+      <span x-show="loading">Scanning…</span>
+    </button>
+  </div>
+
+  <!-- Step 2: Review Pre-Assessment -->
+  <div x-show="step === 1">
+
+    <!-- ── Global Header ─────────────────────────────────────────── -->
+    <div class="mb-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold">Pre-Assessment — All Files</h2>
+        <div class="flex gap-2 text-sm">
+          <span class="pill-p1" x-text="'P1 Breaking: ' + globalCounts.p1_total"></span>
+          <span class="pill-p2" x-text="'P2 Degrading: ' + globalCounts.p2_total"></span>
+          <span class="pill-p3" x-text="'P3 Advisory: '  + globalCounts.p3_total"></span>
+        </div>
+      </div>
+
+      <!-- All-files summary table -->
+      <div class="bg-neutral-900 rounded-xl border border-neutral-800 p-4 mb-3">
+        <table class="scan-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Active Config</th>
+              <th>Commented Config</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="pill-p1">P1 Breaking</span></td>
+              <td x-text="globalCounts.p1_active"></td>
+              <td x-text="globalCounts.p1_comment"></td>
+              <td class="font-semibold" x-text="globalCounts.p1_total"></td>
+            </tr>
+            <tr>
+              <td><span class="pill-p2">P2 Degrading</span></td>
+              <td x-text="globalCounts.p2_active"></td>
+              <td x-text="globalCounts.p2_comment"></td>
+              <td class="font-semibold" x-text="globalCounts.p2_total"></td>
+            </tr>
+            <tr>
+              <td><span class="pill-p3">P3 Advisory</span></td>
+              <td x-text="globalCounts.p3_active"></td>
+              <td x-text="globalCounts.p3_comment"></td>
+              <td class="font-semibold" x-text="globalCounts.p3_total"></td>
+            </tr>
+            <template x-if="globalConflicts.length > 0">
+              <tr class="text-yellow-300">
+                <td>⚠ Conflicts</td>
+                <td class="text-neutral-500">—</td>
+                <td class="text-neutral-500">—</td>
+                <td class="font-semibold" x-text="globalConflicts.length"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Per-File Tabs ───────────────────────────────────────────── -->
+    <template x-if="perFile.length > 0">
+      <div class="mb-5">
+
+        <!-- Tab bar -->
+        <div class="flex gap-1 border-b border-neutral-700 mb-4 overflow-x-auto">
+          <template x-for="(fa, i) in perFile" :key="fa.file_name">
+            <button class="px-4 py-2 text-xs font-medium rounded-t transition-colors flex-shrink-0"
+                    :class="activeTab === i ? 'tab-active' : 'tab-idle'"
+                    @click="activeTab = i"
+                    x-text="fa.file_name"></button>
+          </template>
+        </div>
+
+        <!-- Tab content -->
+        <template x-if="perFile[activeTab]">
+          <div>
+            <!-- Per-file pills -->
+            <div class="flex gap-2 mb-4">
+              <span class="pill-p1" x-text="'P1 Breaking: ' + perFile[activeTab].counts.p1_total"></span>
+              <span class="pill-p2" x-text="'P2 Degrading: ' + perFile[activeTab].counts.p2_total"></span>
+              <span class="pill-p3" x-text="'P3 Advisory: '  + perFile[activeTab].counts.p3_total"></span>
+            </div>
+
+            <!-- Quick-scan changes table (mirrors Skill Applied Changes Log) -->
+            <template x-if="perFile[activeTab].active.length + perFile[activeTab].comments.length + perFile[activeTab].future.length > 0">
+              <div class="bg-neutral-900 rounded-xl border border-neutral-800 p-4 mb-5">
+                <h3 class="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-3">Changes Log</h3>
+                <table class="scan-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Rule</th>
+                      <th>Category</th>
+                      <th>Intro Version</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="ev in perFile[activeTab].active" :key="'a'+ev.num">
+                      <tr>
+                        <td class="text-neutral-400 font-mono" x-text="'#' + ev.num"></td>
+                        <td><span class="font-mono text-blue-300" x-text="ev.rule_id"></span> <span class="text-neutral-300" x-text="'— ' + ev.title"></span></td>
+                        <td><span :class="ev.category === 'p1' ? 'pill-p1' : (ev.category === 'p2' ? 'pill-p2' : 'pill-p3')" x-text="ev.category.toUpperCase()"></span></td>
+                        <td class="text-neutral-400 font-mono" x-text="ev.version"></td>
+                      </tr>
+                    </template>
+                    <template x-for="ev in perFile[activeTab].comments" :key="'cc'+ev.num">
+                      <tr class="opacity-75">
+                        <td class="text-neutral-400 font-mono" x-text="'#CC' + ev.num"></td>
+                        <td><span class="font-mono text-blue-300" x-text="ev.rule_id"></span> <span class="text-neutral-400 italic" x-text="'— ' + ev.title + ' (commented)'"></span></td>
+                        <td><span :class="ev.category === 'p1' ? 'pill-p1' : (ev.category === 'p2' ? 'pill-p2' : 'pill-p3')" x-text="ev.category.toUpperCase()"></span></td>
+                        <td class="text-neutral-400 font-mono" x-text="ev.version"></td>
+                      </tr>
+                    </template>
+                    <template x-for="ev in perFile[activeTab].future" :key="'f'+ev.num">
+                      <tr class="opacity-50">
+                        <td class="text-neutral-400 font-mono" x-text="'#F' + ev.num"></td>
+                        <td><span class="font-mono text-neutral-400" x-text="ev.rule_id"></span> <span class="text-neutral-500 italic" x-text="'— ' + ev.title + ' (future)'"></span></td>
+                        <td><span :class="ev.category === 'p1' ? 'pill-p1' : (ev.category === 'p2' ? 'pill-p2' : 'pill-p3')" x-text="ev.category.toUpperCase()"></span></td>
+                        <td class="text-neutral-400 font-mono" x-text="ev.version"></td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </template>
+
+            <!-- Active Changes -->
+            <template x-if="perFile[activeTab].active.length > 0">
+              <div class="mb-5">
+                <h3 class="text-sm font-semibold text-neutral-200 mb-3">Active Config Changes</h3>
+                <template x-for="ev in perFile[activeTab].active" :key="'acard'+ev.num">
+                  <div class="change-card">
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                      <div class="font-mono text-sm font-semibold text-blue-300">
+                        <span x-text="'#' + ev.num + ' · ' + ev.rule_id + ' — ' + ev.title"></span>
+                      </div>
+                      <div class="flex gap-2 flex-shrink-0">
+                        <span :class="ev.category === 'p1' ? 'pill-p1' : (ev.category === 'p2' ? 'pill-p2' : 'pill-p3')" x-text="ev.category === 'p1' ? 'P1 Breaking' : (ev.category === 'p2' ? 'P2 Degrading' : 'P3 Advisory')"></span>
+                        <span class="text-neutral-500 text-xs font-mono" x-text="'v' + ev.version"></span>
+                      </div>
+                    </div>
+                    <p class="text-neutral-300 text-sm mb-2" x-text="ev.description"></p>
+                    <template x-if="ev.guidance">
+                      <div class="mt-2 mb-3 border-t border-neutral-700 pt-3">
+                        <div class="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1">Guidance</div>
+                        <div class="text-neutral-300 text-sm whitespace-pre-wrap" x-text="ev.guidance"></div>
+                      </div>
+                    </template>
+                    <template x-if="ev.before">
+                      <div>
+                        <div class="text-xs text-neutral-500 mb-1">Before:</div>
+                        <pre x-text="ev.before"></pre>
+                      </div>
+                    </template>
+                    <template x-if="ev.after">
+                      <div>
+                        <div class="text-xs text-neutral-500 mb-1">After:</div>
+                        <pre x-text="ev.after"></pre>
+                      </div>
+                    </template>
+                    <template x-if="ev.see_also && ev.see_also.length > 0">
+                      <div class="text-xs text-neutral-500 mt-2">See also: <span x-text="ev.see_also.join(', ')"></span></div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- Commented-Out Changes -->
+            <template x-if="perFile[activeTab].comments.length > 0">
+              <div class="mb-5">
+                <h3 class="text-sm font-semibold text-neutral-200 mb-1">Commented-Out Config Changes</h3>
+                <p class="text-xs text-neutral-500 mb-3">These apply to commented-out sections. Use <code>--include-comments</code> to process them.</p>
+                <template x-for="ev in perFile[activeTab].comments" :key="'cccard'+ev.num">
+                  <div class="change-card change-card-cc">
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                      <div class="font-mono text-sm font-semibold text-green-300">
+                        <span x-text="'#CC' + ev.num + ' · ' + ev.rule_id + ' — ' + ev.title"></span>
+                      </div>
+                      <div class="flex gap-2 flex-shrink-0">
+                        <span :class="ev.category === 'p1' ? 'pill-p1' : (ev.category === 'p2' ? 'pill-p2' : 'pill-p3')" x-text="ev.category === 'p1' ? 'P1 Breaking' : (ev.category === 'p2' ? 'P2 Degrading' : 'P3 Advisory')"></span>
+                        <span class="text-neutral-500 text-xs font-mono" x-text="'v' + ev.version"></span>
+                      </div>
+                    </div>
+                    <p class="text-neutral-400 text-sm" x-text="ev.description"></p>
+                    <template x-if="ev.guidance">
+                      <div class="mt-2 border-t border-neutral-700 pt-3">
+                        <div class="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1">Guidance</div>
+                        <div class="text-neutral-300 text-sm whitespace-pre-wrap" x-text="ev.guidance"></div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- Future Changes -->
+            <template x-if="perFile[activeTab].future.length > 0">
+              <div class="mb-5">
+                <h3 class="text-sm font-semibold text-neutral-200 mb-1">Future Changes <span class="text-neutral-500 font-normal">(beyond target version)</span></h3>
+                <p class="text-xs text-neutral-500 mb-3">Scanned for awareness — will NOT be applied in this run.</p>
+                <template x-for="ev in perFile[activeTab].future" :key="'fcard'+ev.num">
+                  <div class="change-card change-card-f opacity-75">
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                      <div class="font-mono text-sm font-semibold text-neutral-400">
+                        <span x-text="'#F' + ev.num + ' · ' + ev.rule_id + ' — ' + ev.title"></span>
+                      </div>
+                      <div class="flex gap-2 flex-shrink-0">
+                        <span :class="ev.category === 'p1' ? 'pill-p1' : (ev.category === 'p2' ? 'pill-p2' : 'pill-p3')" x-text="ev.category === 'p1' ? 'P1 Breaking' : (ev.category === 'p2' ? 'P2 Degrading' : 'P3 Advisory')"></span>
+                        <span class="text-neutral-500 text-xs font-mono" x-text="'v' + ev.version"></span>
+                      </div>
+                    </div>
+                    <p class="text-neutral-500 text-sm" x-text="ev.description"></p>
+                    <template x-if="ev.guidance">
+                      <div class="mt-2 border-t border-neutral-700 pt-3">
+                        <div class="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-1">Guidance</div>
+                        <div class="text-neutral-400 text-sm whitespace-pre-wrap" x-text="ev.guidance"></div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <!-- Per-file Conflicts -->
+            <template x-if="perFile[activeTab].conflicts && perFile[activeTab].conflicts.length > 0">
+              <div class="mb-5">
+                <h3 class="text-sm font-semibold text-yellow-300 mb-2">⚠ Conflicts in This File</h3>
+                <p class="text-xs text-neutral-500 mb-3">These rules modify the same config key at different version ticks — review before applying.</p>
+                <div class="bg-yellow-950 border border-yellow-800 rounded-xl p-3">
+                  <table class="scan-table">
+                    <thead>
+                      <tr>
+                        <th>Rule 1</th>
+                        <th>Tick</th>
+                        <th>Rule 2</th>
+                        <th>Tick</th>
+                        <th>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="c in perFile[activeTab].conflicts" :key="c.rule1_id + c.rule2_id">
+                        <tr>
+                          <td class="font-mono text-yellow-400" x-text="c.rule1_id"></td>
+                          <td class="font-mono text-neutral-500" x-text="c.tick1"></td>
+                          <td class="font-mono text-yellow-400" x-text="c.rule2_id"></td>
+                          <td class="font-mono text-neutral-500" x-text="c.tick2"></td>
+                          <td class="text-yellow-200" x-text="c.message"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </template>
+
+          </div>
+        </template>
+      </div>
+    </template>
+
+    <!-- ── Selection + Action Buttons ────────────────────────────── -->
+    <div class="bg-neutral-900 rounded-xl border border-neutral-800 p-4 mb-4">
+      <h3 class="text-sm font-semibold mb-3">Apply Selection</h3>
+      <div class="flex flex-wrap gap-2 mb-3">
+        <template x-for="opt in ['all','p1','p2','p3']" :key="opt">
+          <button class="px-3 py-1 rounded text-xs font-medium border transition-colors"
+                  :class="selection === opt
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'border-neutral-600 text-neutral-400 hover:border-blue-600'"
+                  @click="selection = opt"
+                  x-text="opt.charAt(0).toUpperCase() + opt.slice(1)"></button>
+        </template>
+        <button class="px-3 py-1 rounded text-xs font-medium border border-neutral-600 text-neutral-400 hover:border-blue-600"
+                @click="selection = 'custom'">Custom IDs…</button>
+      </div>
+      <template x-if="selection === 'custom'">
+        <input x-model="customIds" type="text" aria-label="Custom rule IDs" placeholder="e.g. P1-20,P2-18,P1-01"
+               class="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white mb-2">
+      </template>
+    </div>
+
+    <div class="flex gap-3">
+      <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-medium disabled:opacity-40"
+              :disabled="loading"
+              @click="runApply">
+        <span x-show="!loading">Apply Changes →</span>
+        <span x-show="loading">Applying…</span>
+      </button>
+      <button class="bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded text-sm"
+              @click="downloadReport(preReport, 'PreAssessment.md')">
+        ↓ Download PreAssessment.md
+      </button>
+      <button class="bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded text-sm"
+              @click="step = 0">← Back</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Results -->
+  <div x-show="step === 2">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold">Changes Applied</h2>
+      <div class="flex gap-3 text-sm">
+        <span class="text-green-400 font-medium" x-text="appliedCount + ' auto-applied'"></span>
+        <span class="text-yellow-400 font-medium" x-show="guidedCount > 0" x-text="guidedCount + ' need manual action'"></span>
+      </div>
+    </div>
+
+    <template x-if="warningCount > 0">
+      <div class="bg-yellow-950 border border-yellow-700 rounded-lg p-3 mb-4 text-sm text-yellow-300">
+        ⚠ <strong x-text="warningCount"></strong> change(s) require manual review — see the report below.
+      </div>
+    </template>
+
+    <!-- Updated files for download -->
+    <template x-if="Object.keys(updatedFiles).length > 0">
+      <div class="bg-neutral-900 rounded-xl border border-neutral-800 p-4 mb-4">
+        <h3 class="text-sm font-semibold mb-3">Updated Files</h3>
+        <div class="space-y-2">
+          <template x-for="name in Object.keys(updatedFiles)" :key="name">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-green-400 font-mono" x-text="name"></span>
+              <button class="text-blue-400 hover:text-blue-300 text-xs"
+                      @click="downloadFile(name)">↓ Download</button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- Operational report -->
+    <div class="bg-neutral-900 rounded-xl border border-neutral-800 p-6 mb-6 report-body prose prose-invert max-w-none text-sm"
+         x-html="opsReportHtml"></div>
+
+    <div class="flex gap-3">
+      <button class="bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded text-sm"
+              @click="downloadReport(opsReport, 'OperationalAssessment.md')">
+        ↓ Download OperationalAssessment.md
+      </button>
+      <button class="bg-neutral-700 hover:bg-neutral-600 text-white px-4 py-2 rounded text-sm"
+              @click="reset">Start Over</button>
+    </div>
+  </div>
+
+  <!-- Error banner -->
+  <template x-if="error">
+    <div class="mt-4 bg-red-950 border border-red-700 rounded-lg p-3 text-sm text-red-300">
+      ❌ <span x-text="error"></span>
+    </div>
+  </template>
+
+</div>
+
+<script>
+function app() {
+  return {
+    step: 0,
+    steps: [
+      { label: 'Upload',  desc: 'Select config files' },
+      { label: 'Review',  desc: 'Pre-assessment report' },
+      { label: 'Results', desc: 'Applied changes' },
+    ],
+
+    files: {},
+    targetVersion: '',
+    includeComments: false,
+    includeGuidance: false,
+    loading: false,
+    error: null,
+
+    preReport: '',
+    perFile: [],
+    activeTab: 0,
+    globalCounts: { p1_active:0, p1_comment:0, p1_total:0, p2_active:0, p2_comment:0, p2_total:0, p3_active:0, p3_comment:0, p3_total:0 },
+    globalConflicts: [],
+    conflictCount: 0,
+
+    selection: 'all',
+    customIds: '',
+
+    opsReport: '',
+    opsReportHtml: '',
+    appliedCount: 0,
+    guidedCount: 0,
+    warningCount: 0,
+    updatedFiles: {},
+
+    async handleFileInput(e) {
+      for (const file of e.target.files) {
+        this.files[file.name] = await file.text();
+      }
+    },
+
+    async handleDrop(e) {
+      for (const file of e.dataTransfer.files) {
+        if (file.name.endsWith('.yaml') || file.name.endsWith('.yml')) {
+          this.files[file.name] = await file.text();
+        }
+      }
+    },
+
+    async runAssess() {
+      this.loading = true;
+      this.error = null;
+      try {
+        const res = await fetch('/api/assess', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            files: this.files,
+            target_version: this.targetVersion,
+            include_comments: this.includeComments,
+            include_guidance: this.includeGuidance,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          this.error = data.error || 'assess failed';
+          return;
+        }
+
+        this.preReport = data.report;
+        this.perFile = data.per_file || [];
+        this.globalCounts = data.global_counts || this.globalCounts;
+        this.globalConflicts = data.conflicts || [];
+        this.conflictCount = data.conflict_count;
+        this.activeTab = 0;
+        this.step = 1;
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async runApply() {
+      this.loading = true;
+      this.error = null;
+      const select = this.selection === 'custom' ? this.customIds : this.selection;
+      try {
+        const res = await fetch('/api/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            files: this.files,
+            target_version: this.targetVersion,
+            include_comments: this.includeComments,
+            include_guidance: this.includeGuidance,
+            select,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          this.error = data.error || 'apply failed';
+          return;
+        }
+
+        this.opsReport = data.report;
+        this.opsReportHtml = marked.parse(data.report);
+        this.appliedCount = data.applied_count;
+        this.guidedCount = data.guided_count;
+        this.warningCount = data.warning_count;
+        this.updatedFiles = data.updated_files;
+        this.step = 2;
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    downloadFile(name) {
+      // Explicitly read the current content from updatedFiles by key to avoid
+      // any Alpine.js loop-variable closure issues.
+      const content = this.updatedFiles[name];
+      if (!content) return;
+      const isYaml = name.endsWith('.yaml') || name.endsWith('.yml');
+      const mime = isYaml ? 'text/yaml' : 'text/markdown';
+      const blob = new Blob([content], { type: mime });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name.split('/').pop();
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    },
+
+    downloadReport(content, filename) {
+      const isYaml = filename.endsWith('.yaml') || filename.endsWith('.yml');
+      const mime = isYaml ? 'text/yaml' : 'text/markdown';
+      const blob = new Blob([content], { type: mime });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    },
+
+    reset() {
+      this.step = 0;
+      this.files = {};
+      this.preReport = '';
+      this.perFile = [];
+      this.activeTab = 0;
+      this.globalCounts = { p1_active:0, p1_comment:0, p1_total:0, p2_active:0, p2_comment:0, p2_total:0, p3_active:0, p3_comment:0, p3_total:0 };
+      this.globalConflicts = [];
+      this.conflictCount = 0;
+      this.opsReport = '';
+      this.updatedFiles = {};
+      this.appliedCount = 0;
+      this.guidedCount = 0;
+      this.warningCount = 0;
+      this.error = null;
+    },
+  };
+}
+</script>
+</body>
+</html>

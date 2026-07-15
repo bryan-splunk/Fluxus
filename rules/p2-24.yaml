@@ -1,0 +1,40 @@
+id: P2-24
+category: p2
+introduced: "0.122"
+title: "Batch Processor Telemetry Requires level: normal (no longer emitted at basic)"
+look_for:
+  - path: $.service.telemetry.metrics.level
+    match: value
+    value: "basic"
+migration:
+  before: |
+    # Before 0.122 — batch processor metrics visible at basic level:
+    service:
+      telemetry:
+        metrics:
+          level: basic
+  after: |
+    # After 0.122 — must use normal to keep batch processor metrics:
+    service:
+      telemetry:
+        metrics:
+          level: normal   # 'normal' is also the default if not specified
+guidance: |
+  Change the telemetry metrics level from basic to normal to restore batch processor
+  metric emission:
+
+    service:
+      telemetry:
+        metrics:
+          level: normal   # was: basic
+
+  The normal level is also the default if the field is not specified. If you have no
+  service::telemetry::metrics block, batch processor metrics are already emitted at the
+  normal default level.
+description: >-
+  In 0.122, batch processor metrics (e.g., processor_batch_*) are no longer emitted at
+  telemetry level basic. If your config sets service.telemetry.metrics.level to basic
+  and you monitor batch processor behavior (queue size, send failures, etc.), those metrics
+  will disappear after upgrading to 0.122+. Change the telemetry level to normal to
+  restore batch processor metrics. The normal level is also the default if the field is
+  not specified.

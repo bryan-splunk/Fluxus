@@ -1,0 +1,17 @@
+cases:
+  - name: "fires when prometheus receiver present"
+    config: |
+      receivers:
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: my-app
+                static_configs:
+                  - targets: ["localhost:8080"]
+    should_fire: true
+
+  - name: "silent when prometheus absent"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

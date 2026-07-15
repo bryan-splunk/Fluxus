@@ -1,0 +1,39 @@
+cases:
+  - name: "fires when kafka exporter present"
+    config: |
+      exporters:
+        kafka:
+          brokers: [kafka:9092]
+    should_fire: true
+
+  - name: "fires when kafkametrics receiver present"
+    config: |
+      receivers:
+        kafkametrics:
+          brokers: [kafka:9092]
+          collection_interval: 10s
+    should_fire: true
+
+  - name: "fires when kafka_metrics receiver present"
+    config: |
+      receivers:
+        kafka_metrics:
+          brokers: [kafka:9092]
+    should_fire: true
+
+  - name: "fires when kafka exporter has auth.plain_text"
+    config: |
+      exporters:
+        kafka:
+          brokers: [kafka:9092]
+          auth:
+            plain_text:
+              username: admin
+              password: secret
+    should_fire: true
+
+  - name: "silent when no kafka-related components"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

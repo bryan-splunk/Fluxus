@@ -1,0 +1,14 @@
+cases:
+  - name: "fires when mongodb receiver present"
+    config: |
+      receivers:
+        mongodb:
+          hosts:
+            - endpoint: localhost:27017
+    should_fire: true
+
+  - name: "silent when mongodb absent"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

@@ -1,0 +1,72 @@
+id: P1-05
+category: p1
+introduced: "0.137"
+title: "access_token_passthrough Removed"
+look_for:
+  - path: $.receivers.signalfx.access_token_passthrough
+    match: exists
+  - path: $.exporters.signalfx.access_token_passthrough
+    match: exists
+  - path: $.exporters.splunk_hec.access_token_passthrough
+    match: exists
+  - path: $.receivers.signalfx.access_token_passthrough
+    match: exists
+    in_comments: true
+  - path: $.exporters.signalfx.access_token_passthrough
+    match: exists
+    in_comments: true
+  - path: $.exporters.splunk_hec.access_token_passthrough
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete access_token_passthrough from signalfx receiver — field causes startup failure.
+    - from: $.receivers.signalfx.access_token_passthrough
+      to: ""
+    # Delete access_token_passthrough from signalfx exporter.
+    - from: $.exporters.signalfx.access_token_passthrough
+      to: ""
+    # Delete access_token_passthrough from splunk_hec exporter.
+    - from: $.exporters.splunk_hec.access_token_passthrough
+      to: ""
+    # Inject notices on the exporters so the token-passthrough story is documented in the config.
+    - comment_path: $.exporters.signalfx
+      comment_text: '# [P1-05 UPGRADE v0.137] access_token_passthrough removed — use headers_setter extension or inline headers for token propagation'
+    - comment_path: $.exporters.splunk_hec
+      comment_text: '# [P1-05 UPGRADE v0.137] access_token_passthrough removed — use headers_setter extension or inline headers for token propagation'
+  before: |
+    receivers:
+      signalfx:
+        endpoint: 0.0.0.0:9943
+        access_token_passthrough: true    # REMOVE
+
+    exporters:
+      signalfx:
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+        access_token_passthrough: true    # REMOVE
+
+      splunk_hec:
+        token: "${env:SPLUNK_HEC_TOKEN}"
+        access_token_passthrough: true    # REMOVE
+  after: |
+    exporters:
+      signalfx:
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+
+      splunk_hec:
+        token: "${env:SPLUNK_HEC_TOKEN}"
+guidance: |
+  Remove the access_token_passthrough: field entirely — it is no longer a recognized
+  config key. Token passthrough is no longer a supported mechanism.
+
+  If you need to propagate tokens to downstream services, use the headers_setter extension
+  or add inline headers: to the exporter configuration instead.
+description: >-
+  The access_token_passthrough field was removed as a recognized config key in 0.137.
+  If present in any signalfx receiver, signalfx exporter, or splunk_hec exporter block,
+  the collector will fail to start. Remove the field entirely from all locations. Token
+  propagation should now be handled via the headers_setter extension or inline headers
+  on the exporter.
+see_also:
+  - P1-04

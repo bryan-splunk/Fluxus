@@ -1,0 +1,43 @@
+cases:
+  - name: "fires when prometheus has use_start_time_metric and deletes it"
+    config: |
+      receivers:
+        prometheus:
+          use_start_time_metric: true
+          config:
+            scrape_configs:
+              - job_name: my-app
+                static_configs:
+                  - targets: ["localhost:8080"]
+    should_fire: true
+    apply_not_contains:
+      - "use_start_time_metric"
+
+  - name: "fires when prometheus has start_time_metric_regex and deletes it"
+    config: |
+      receivers:
+        prometheus:
+          start_time_metric_regex: "^foo_"
+    should_fire: true
+    apply_not_contains:
+      - "start_time_metric_regex"
+
+  - name: "fires when prometheus has report_extra_scrape_metrics and deletes it"
+    config: |
+      receivers:
+        prometheus:
+          report_extra_scrape_metrics: true
+    should_fire: true
+    apply_not_contains:
+      - "report_extra_scrape_metrics"
+
+  - name: "silent when prometheus has none of the removed fields"
+    config: |
+      receivers:
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: my-app
+                static_configs:
+                  - targets: ["localhost:8080"]
+    should_fire: false

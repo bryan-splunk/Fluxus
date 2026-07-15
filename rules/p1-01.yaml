@@ -1,0 +1,76 @@
+id: P1-01
+category: p1
+introduced: "0.134"
+title: "routingprocessor Removed — Migrate to routing Connector"
+look_for:
+  - path: "$.processors.routing"
+    match: exists
+  - path: "$.processors.routing"
+    match: exists
+    in_comments: true
+migration:
+  # strategy: guided — the routing connector requires complete pipeline rewiring.
+  # The engine reports this change with full guidance but does NOT attempt an
+  # automated apply, because the target topology (receiver/exporter names, new
+  # pipeline names) is unique to each deployment and cannot be derived from the
+  # processor config alone.
+  strategy: guided
+  key_moves:
+    - comment_path: $.processors.routing
+      comment_text: |
+        # UPGRADE(P1-01 v0.134): routingprocessor REMOVED — collector fails to start if present.
+        # ACTION: migrate to the routing CONNECTOR (complete pipeline rewiring required).
+        # The connector acts as exporter on the input pipeline AND receiver on each output pipeline.
+        # New OTTL condition syntax: condition: attributes["env"] == "prod"
+        # See P1-01 assessment for full example. Note: match_once was already removed in 0.120 (P1-21).
+  before: |
+    processors:
+      routing:
+        from_attribute: env
+        table:
+          - value: prod
+            exporters: [otlp/prod]
+    service:
+      pipelines:
+        traces:
+          processors: [routing]
+  after: |
+    connectors:
+      routing:
+        table:
+          - condition: attributes["env"] == "prod"
+            pipelines: [traces/prod]
+        default_pipelines: [traces/default]
+    service:
+      pipelines:
+        traces/in:
+          receivers: [otlp]
+          exporters: [routing]
+        traces/prod:
+          receivers: [routing]
+          exporters: [otlp/prod]
+        traces/default:
+          receivers: [routing]
+          exporters: [otlp/default]
+guidance: |
+  Migrate to the routing connector. The routing connector uses OTTL conditions to route
+  telemetry to named pipelines. It must be wired as an exporter in the input pipeline and
+  as a receiver in each output pipeline. Removing the processor without completing the
+  pipeline rewiring will still cause a startup failure.
+
+  Pipeline naming: The routing connector routes to pipeline names, not exporter names.
+  Old processor-style exporters: [otlp/acme] becomes pipelines: [traces/acme].
+  The output pipeline names must match exactly what is listed in the connector table.
+
+  Accuracy check after applying:
+  - The input pipeline must have routing in its exporters list
+  - One output pipeline per destination must have routing in its receivers list
+  - No remaining routing: entry under processors:
+description: >-
+  The routingprocessor was removed in 0.134. Collector fails to start if present.
+  Must migrate to the routing connector, which requires complete pipeline rewiring —
+  the connector acts as both an exporter on the input pipeline and a receiver on
+  each output pipeline. NOTE: match_once was already removed from the connector
+  in 0.120 (see P1-21) — do not include it in the connector config.
+see_also:
+  - P1-21

@@ -1,0 +1,20 @@
+cases:
+  - name: "fires when active_directory_ds receiver present"
+    config: |
+      receivers:
+        active_directory_ds:
+          collection_interval: 10s
+    should_fire: true
+
+  - name: "fires when activedirectoryds receiver present"
+    config: |
+      receivers:
+        activedirectoryds:
+          collection_interval: 10s
+    should_fire: true
+
+  - name: "silent when neither present"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

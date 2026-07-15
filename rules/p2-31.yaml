@@ -1,0 +1,50 @@
+id: P2-31
+category: p2
+introduced: "0.125"
+title: "telemetry.newPipelineTelemetry Gate On for Logs and Traces"
+look_for:
+  - path: $.service.telemetry
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.service.telemetry
+      comment_text: |
+        # UPGRADE(P2-31 v0.125): telemetry.newPipelineTelemetry now enabled for logs/traces.
+        # Internal OTLP logs now identify source component via instrumentation scope attributes, not log record attrs.
+        # Before: body["otelcol.component.id"] in log record attributes
+        # After:  scope.attributes["otelcol.component.id"]
+        # ACTION: update OTLP log consumers to read component identity from scope attributes.
+    # Before 0.125 — component identity in internal OTLP logs was in log record attributes:
+    # body["otelcol.component.id"] = "batch/myprocessor"
+  after: |
+    # After 0.125 — component identity is in instrumentation scope attributes:
+    # scope.attributes["otelcol.component.id"] = "batch/myprocessor"
+    #
+    # Update OTLP log consumers to read from instrumentation scope attributes.
+    # This does NOT affect stderr/stdout log output.
+    # Still OFF by default for metrics (Prometheus exporter limitation).
+    #
+    # To temporarily disable (not recommended):
+    # --feature-gates=-telemetry.newPipelineTelemetry
+    # Note: off-state has a known regression where component attributes are missing entirely.
+guidance: |
+  Update OTLP log consumers to read component identity from the instrumentation scope
+  attributes instead of log record attributes. The telemetry.newPipelineTelemetry gate
+  is now on by default for logs and traces.
+
+  This does NOT affect stderr/stdout log output — only OTLP-exported internal logs.
+  The gate remains off by default for metrics (Prometheus does not yet support scope attrs).
+
+  To temporarily disable for logs/traces (not recommended long-term):
+    --feature-gates=-telemetry.newPipelineTelemetry
+  Note: the off-state has a known regression where component attributes are missing from
+  internal logs entirely. Migrate consumers instead of reverting.
+description: >-
+  In 0.125, the telemetry.newPipelineTelemetry feature gate was enabled by default for
+  logs and traces. Internal collector logs exported over OTLP now use instrumentation scope
+  attributes to identify the source component, rather than regular log record attributes.
+  Systems consuming these logs that parse log record attributes for component identity
+  (e.g., looking for otelcol.component.id as a log body attribute) will stop seeing those
+  attributes. Update OTLP log consumers to read component identity from scope attributes.
+  This does not affect stderr/stdout log output, and the gate remains off for metrics.

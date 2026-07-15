@@ -1,0 +1,47 @@
+# SEC-P1-03 fires on: Bearer Authorization header literal, or unquoted/double-quoted
+# token/secret/client_secret/private_key fields (10+ chars, not env refs).
+cases:
+  - name: "fires when splunk_hec has hardcoded token (double-quoted)"
+    config: |
+      exporters:
+        splunk_hec:
+          endpoint: https://splunk.example.com:8088
+          token: "abc123-hec-token-value-here"
+    should_fire: true
+
+  - name: "fires when unquoted literal token present"
+    config: |
+      exporters:
+        splunk_hec:
+          endpoint: https://splunk.example.com:8088
+          token: abc123-hec-token-literal
+    should_fire: true
+
+  - name: "fires when client_secret literal present"
+    config: |
+      extensions:
+        oauth2client:
+          client_id: my-client
+          client_secret: "super-secret-value-here"
+    should_fire: true
+
+  - name: "fires when literal secret field present"
+    config: |
+      exporters:
+        some_exporter:
+          secret: my-api-secret-literal
+    should_fire: true
+
+  - name: "silent when token is env var reference"
+    config: |
+      exporters:
+        splunk_hec:
+          endpoint: https://splunk.example.com:8088
+          token: "${env:SPLUNK_HEC_TOKEN}"
+    should_fire: false
+
+  - name: "silent when no token or secret fields"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

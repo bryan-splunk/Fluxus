@@ -1,0 +1,59 @@
+cases:
+  - name: "fires when hostmetrics present (snake_case rename needed)"
+    config: |
+      receivers:
+        hostmetrics:
+          collection_interval: 10s
+      service:
+        pipelines:
+          metrics:
+            receivers: [hostmetrics]
+    should_fire: true
+    apply_contains:
+      - "host_metrics:"
+    apply_not_contains:
+      - "hostmetrics:"
+
+  - name: "fires when windowseventlog present"
+    config: |
+      receivers:
+        windowseventlog:
+          channel: System
+      service:
+        pipelines:
+          logs:
+            receivers: [windowseventlog]
+    should_fire: true
+    apply_contains:
+      - "windows_event_log:"
+    apply_not_contains:
+      - "windowseventlog:"
+
+  - name: "fires when resourcedetection present"
+    config: |
+      processors:
+        resourcedetection:
+          detectors: [env]
+    should_fire: true
+    apply_contains:
+      - "resource_detection:"
+    apply_not_contains:
+      - "resourcedetection:"
+
+  - name: "fires when spanmetrics connector present"
+    config: |
+      connectors:
+        spanmetrics: {}
+    should_fire: true
+
+  - name: "silent when only modern snake_case names present"
+    config: |
+      receivers:
+        host_metrics:
+          collection_interval: 10s
+        windows_event_log:
+          channel: System
+      processors:
+        resource_detection:
+          detectors: [env]
+    should_fire: false

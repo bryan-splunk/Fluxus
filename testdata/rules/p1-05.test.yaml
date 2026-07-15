@@ -1,0 +1,37 @@
+cases:
+  - name: "fires when signalfx receiver has access_token_passthrough"
+    config: |
+      receivers:
+        signalfx:
+          access_token_passthrough: true
+    should_fire: true
+    apply_not_contains:
+      - "access_token_passthrough"
+
+  - name: "fires when signalfx exporter has access_token_passthrough"
+    config: |
+      exporters:
+        signalfx:
+          realm: us1
+          access_token_passthrough: true
+    should_fire: true
+    apply_not_contains:
+      - "access_token_passthrough:"
+
+  - name: "fires when splunk_hec exporter has access_token_passthrough"
+    config: |
+      exporters:
+        splunk_hec:
+          endpoint: https://hec.example.com
+          access_token_passthrough: true
+    should_fire: true
+    apply_not_contains:
+      - "access_token_passthrough:"
+
+  - name: "silent when access_token_passthrough absent everywhere"
+    config: |
+      exporters:
+        splunk_hec:
+          endpoint: https://hec.example.com
+          token: abc123
+    should_fire: false

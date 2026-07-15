@@ -1,0 +1,20 @@
+cases:
+  - name: "fires when signalfx exporter has translation_rules and deletes it"
+    config: |
+      exporters:
+        signalfx:
+          realm: us1
+          translation_rules:
+            - action: rename_dimensions
+              mapping:
+                host: host.name
+    should_fire: true
+    apply_not_contains:
+      - "translation_rules"
+
+  - name: "silent when translation_rules absent"
+    config: |
+      exporters:
+        signalfx:
+          realm: us1
+    should_fire: false

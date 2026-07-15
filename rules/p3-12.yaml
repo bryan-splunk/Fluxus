@@ -1,0 +1,39 @@
+id: P3-12
+category: p3
+introduced: "0.121"
+title: "k8sattributes fieldExtractConfigRegex.disallow Gate Moved to Stable"
+look_for:
+  - path: $.processors.k8s_attributes
+    match: exists
+  - path: $.processors.k8sattributes
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.processors.k8s_attributes
+      comment_text: |
+        # UPGRADE(P3-12 v0.121): k8sattributes fieldExtractConfigRegex.disallow gate moved to stable.
+        # Regex-based field extraction validation is now always enforced.
+        # Remove --feature-gates=processor.k8sattributes.fieldExtractConfigRegex.disallow from startup.
+    - comment_path: $.processors.k8sattributes
+      comment_text: |
+        # UPGRADE(P3-12 v0.121): fieldExtractConfigRegex.disallow gate is now stable. Remove from startup args.
+  after: |
+    # Remove the flag from startup configuration.
+    # Regex-based field extraction config validation is now always enforced.
+    # Verify k8sattributes extract config does not rely on patterns only valid
+    # under the old permissive validation.
+guidance: |
+  Remove the processor.k8sattributes.fieldExtractConfigRegex.disallow feature gate flag
+  from all service startup arguments (systemd unit files, launch scripts, Helm values,
+  Windows service registry, etc.).
+
+  Also verify your k8s_attributes extract config does not rely on patterns that were
+  only allowed under the old permissive validation. Regex-based field extraction config
+  validation is now always enforced.
+description: >-
+  In 0.121, the processor.k8sattributes.fieldExtractConfigRegex.disallow feature gate
+  was moved to stable. Regex-based field extraction config validation in the k8s_attributes
+  processor is now always enforced. The gate itself will be removed in a future release.
+  Remove the flag from all startup configurations and verify that your k8sattributes extract
+  config does not rely on patterns that were only allowed under the old permissive validation.

@@ -1,0 +1,39 @@
+id: P2-28
+category: p2
+introduced: "0.124"
+title: "sqlserver Receiver — db.lock_timeout Unit Changed (milliseconds → seconds)"
+look_for:
+  - path: $.receivers.sqlserver
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.sqlserver
+      comment_text: |
+        # UPGRADE(P2-28 v0.124): db.lock_timeout metric unit changed from milliseconds to seconds.
+        # No YAML config change required.
+        # ACTION REQUIRED: divide all db.lock_timeout threshold values in dashboards and
+        # alert rules by 1000 — a value of 30000 now means 30000s, not 30s.
+  before: |
+    # Before 0.124 — db.lock_timeout in milliseconds:
+    # db.lock_timeout = 30000   (meaning 30 seconds)
+  after: |
+    # After 0.124 — db.lock_timeout in seconds:
+    # db.lock_timeout = 30      (meaning 30 seconds)
+    #
+    # No collector YAML config change required.
+    # Divide all db.lock_timeout threshold values in dashboards and alert rules by 1000.
+guidance: |
+  Divide all db.lock_timeout threshold values in dashboards and alert rules by 1000 after
+  upgrading. The unit changed from milliseconds to seconds in 0.124.
+
+  No collector YAML config change is required — update dashboard thresholds and alert
+  rule conditions in your monitoring/alerting system only.
+description: >-
+  In 0.124, the unit of the db.lock_timeout attribute in SQL Server query sample collection
+  logs changed from milliseconds to seconds. Alert thresholds and dashboard visualizations
+  will be incorrect by a factor of 1000 after the upgrade. No collector YAML config change
+  is required. Divide all db.lock_timeout threshold values in dashboards and alert rules
+  by 1000 after upgrading.
+see_also:
+  - P2-12

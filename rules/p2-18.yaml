@@ -1,0 +1,53 @@
+id: P2-18
+category: p2
+introduced: "0.126"
+title: "prometheus Receiver — Legacy Resource Attributes Renamed"
+look_for:
+  - path: "$.receivers.prometheus"
+    match: exists
+  - path: "$.receivers.prometheus"
+    match: exists
+    in_comments: true
+migration:
+  # The rename happens in scraped metric resource attributes, not in any collector YAML key.
+  # Nothing to migrate structurally — inject a comment so the action item travels with the config.
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.prometheus
+      comment_once: true
+      comment_text: |
+        # [P2-18 UPGRADE v0.126/v0.129] prometheus resource attribute renames are permanent (gate stable v0.129):
+        #   net.host.name → server.address  |  net.host.port → server.port  |  http.scheme → url.scheme
+        #   Update dashboards and alerts that filter on the old attribute names.
+  before: |
+    # Dashboard/alert filters using old attribute names:
+    # net.host.name  (resource attribute)
+    # net.host.port  (resource attribute)
+    # http.scheme    (resource attribute)
+  after: |
+    # Update to new attribute names:
+    # server.address  (was net.host.name)
+    # server.port     (was net.host.port)
+    # url.scheme      (was http.scheme)
+    #
+    # Temporary rollback (0.126-0.128 ONLY — gate stable/locked from 0.129+):
+    # --feature-gates=-receiver.prometheusreceiver.RemoveLegacyResourceAttributes
+guidance: |
+  Update dashboards, alerts, and OTTL rules to use the new resource attribute names:
+  - net.host.name → server.address
+  - net.host.port → server.port
+  - http.scheme  → url.scheme
+
+  Transition window: The gate was beta (default on) from 0.126 and became STABLE in 0.129.
+  The temporary rollback flag --feature-gates=-receiver.prometheusreceiver.RemoveLegacyResourceAttributes
+  only works in 0.126–0.128. From 0.129+ the rename is permanent and the gate flag is non-functional.
+
+  No YAML config change is required — this is a dashboard/query and OTTL update only.
+description: >-
+  The receiver.prometheusreceiver.RemoveLegacyResourceAttributes feature gate became
+  beta (enabled by default) in 0.126. Resource attributes on all prometheus-scraped
+  metrics are renamed: net.host.name->server.address, net.host.port->server.port,
+  http.scheme->url.scheme. Dashboards and alerts filtering on the old names will
+  return no data after upgrade. The gate became stable in 0.129, making the rename
+  permanent and the gate flag non-functional from 0.129+.
+see_also: []

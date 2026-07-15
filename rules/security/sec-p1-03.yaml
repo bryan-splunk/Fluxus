@@ -1,0 +1,60 @@
+id: SEC-P1-03
+phase: security
+category: p1
+introduced: "0.0.0"
+title: "Hardcoded Bearer Token or Secret in Header / Exporter Config"
+look_for:
+  # Bearer token in Authorization header value (literal, not env var — first char is not $)
+  - raw_pattern: "(?m)Authorization\\s*:\\s*(?:Bearer|bearer)\\s+[^$\\s][A-Za-z0-9._~+/=-]{19,}"
+  # Literal token/secret field (any form — first char is not ", ', $, #, {, or whitespace)
+  - raw_pattern: "(?m)^\\s*(?:token|secret|client_secret|private_key)\\s*:\\s+[^\\s\"'$#{]\\S{9,}"
+  # Double-quoted token field — first char inside quotes is not $
+  - raw_pattern: "(?m)^\\s*(?:token|secret|client_secret)\\s*:\\s*\"[^$\"][^\"]{9,}\""
+migration:
+  strategy: inform_only
+  key_moves:
+    - comment_path: $.exporters
+      comment_once: true
+      comment_text: |
+        # [SEC-P1-03 SECURITY WARNING] Potential hardcoded token or secret detected.
+        # Bearer tokens, API secrets, and private keys must not be stored as literal
+        # values in YAML config files. Use environment variable references instead:
+        #   token: "${env:SPLUNK_HEC_TOKEN}"
+        #   Authorization: "Bearer ${env:API_TOKEN}"
+        # See: https://opentelemetry.io/docs/collector/configuration/#environment-variables
+  before: |
+    # Hardcoded HEC token (insecure):
+    exporters:
+      splunk_hec:
+        endpoint: https://splunk.example.com:8088
+        token: "abc123-hec-token-value"    # INSECURE
+  after: |
+    # Secure — use environment variable reference:
+    exporters:
+      splunk_hec:
+        endpoint: https://splunk.example.com:8088
+        token: "${env:SPLUNK_HEC_TOKEN}"
+guidance: |
+  Replace all literal token, secret, client_secret, and private_key values with
+  environment variable references:
+    token: "${env:SPLUNK_HEC_TOKEN}"
+    Authorization: "Bearer ${env:API_TOKEN}"
+    client_secret: "${env:OAUTH_CLIENT_SECRET}"
+
+  These long opaque strings are commonly found in:
+  - splunk_hec exporter token: fields
+  - HTTP header Authorization: values
+  - OAuth client_secret fields
+  - Any exporter with an access_token field
+
+  Commit the updated config without secrets to source control and supply values at
+  runtime via environment variables from your secret management system.
+
+  See: https://opentelemetry.io/docs/collector/configuration/#environment-variables
+description: >-
+  Detects hardcoded bearer tokens, API secrets, client_secrets, and private_key
+  values in exporter configurations and HTTP header settings. These long opaque
+  strings are commonly found in splunk_hec token fields, Authorization headers, and
+  OAuth client_secret fields. Replace all literal values with ${env:VAR_NAME}
+  environment variable references to prevent accidental credential exposure in source
+  control or log files.

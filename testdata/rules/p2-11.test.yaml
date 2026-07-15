@@ -1,0 +1,22 @@
+cases:
+  - name: "fires when http_check receiver present"
+    config: |
+      receivers:
+        http_check:
+          targets:
+            - url: http://localhost:8080/health
+    should_fire: true
+
+  - name: "fires when httpcheck receiver present"
+    config: |
+      receivers:
+        httpcheck:
+          targets:
+            - url: http://localhost:8080/health
+    should_fire: true
+
+  - name: "silent when neither present"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

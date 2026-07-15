@@ -1,0 +1,38 @@
+id: P3-11
+category: p3
+introduced: "0.120"
+title: "hostmetrics normalizeProcessCPUUtilization Gate Removed"
+look_for:
+  - path: $.receivers.host_metrics
+    match: exists
+  - path: $.receivers.hostmetrics
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.host_metrics
+      comment_text: |
+        # UPGRADE(P3-11 v0.120): hostmetrics normalizeProcessCPUUtilization gate removed — normalization always on.
+        # Remove --feature-gates=receiver.hostmetrics.normalizeProcessCPUUtilization from startup if present (causes error).
+    - comment_path: $.receivers.hostmetrics
+      comment_text: |
+        # UPGRADE(P3-11 v0.120): normalizeProcessCPUUtilization gate removed. Remove from startup args to avoid error.
+    # --feature-gates=receiver.hostmetrics.normalizeProcessCPUUtilization
+    # --feature-gates=+receiver.hostmetrics.normalizeProcessCPUUtilization
+  after: |
+    # Remove the flag from all startup configuration.
+    # The behavior (normalizing CPU utilization by number of logical CPUs)
+    # is now always enabled — no gate needed.
+guidance: |
+  Remove the normalizeProcessCPUUtilization feature gate flag from all service startup
+  arguments (systemd unit files, launch scripts, Helm chart values, Windows service
+  registry, etc.).
+
+  The behavior it controlled (normalizing CPU utilization by number of logical CPUs) is
+  now always enabled. Specifying an unknown gate causes a startup error.
+description: >-
+  In 0.120, the receiver.hostmetrics.normalizeProcessCPUUtilization feature gate was
+  stabilized and then removed. The behavior — normalizing process CPU utilization by the
+  number of logical CPUs — is now always enabled. Specifying the gate in startup arguments
+  (systemd unit files, Helm chart values, Windows service registry, etc.) causes an
+  "unknown feature gate" error. Remove the flag from all startup configurations.

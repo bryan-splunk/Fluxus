@@ -1,0 +1,41 @@
+id: P2-26
+category: p2
+introduced: "0.123"
+title: "prometheusremotewrite Exporter — export_created_metric Removed"
+look_for:
+  - path: $.exporters.prometheusremotewrite.export_created_metric
+    match: exists
+  - path: $.exporters.prometheusremotewrite.export_created_metric
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete export_created_metric — field causes startup failure if present.
+    - from: $.exporters.prometheusremotewrite.export_created_metric
+      to: ""
+    - comment_path: $.exporters.prometheusremotewrite
+      comment_text: |
+        # UPGRADE(P2-26 v0.123): export_created_metric field removed — was deleted automatically.
+        # No further action needed. See P2-13 for Remote Write 2.0 upgrade requirements.
+  before: |
+    # Before 0.123 — field was accepted:
+    exporters:
+      prometheusremotewrite:
+        endpoint: https://prometheus.example.com/api/v1/write
+        export_created_metric: true    # REMOVED in 0.123
+  after: |
+    # After 0.123 — remove the field entirely:
+    exporters:
+      prometheusremotewrite:
+        endpoint: https://prometheus.example.com/api/v1/write
+guidance: |
+  Remove the export_created_metric: field entirely from the prometheusremotewrite exporter.
+  This field was removed in 0.123 and causes a startup failure if present.
+  No replacement field is needed — the behavior it controlled is no longer supported.
+description: >-
+  The export_created_metric config option was removed from the prometheusremotewrite exporter
+  in 0.123. Any config that includes this field will cause the collector to fail to start.
+  Remove the export_created_metric field entirely from the exporter configuration.
+see_also:
+  - P2-13

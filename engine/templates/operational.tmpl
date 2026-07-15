@@ -1,0 +1,103 @@
+# Operational Assessment Report
+**Generated:** {{ now }}  
+**Target Version:** {{ if .TargetVersion }}{{ .TargetVersion }}{{ else }}latest{{ end }}
+
+---
+
+## Summary
+
+| | Count |
+|---|---|
+| ✅ Auto-applied (file changed) | {{ len .AppliedEffects }} |
+| 📋 Manual action required | {{ len .GuidedEffects }} |
+| 📝 Commented-out config processed | {{ len .CommentEffects }} |
+| ⚠ Warnings | {{ len .Warnings }} |
+
+---
+{{ if .AppliedEffects }}
+## ✅ Auto-Applied Changes
+
+The following changes were applied directly to your config files:
+
+| ID | Rule | Version | Category | File |
+|---|---|---|---|---|
+{{ range .AppliedEffects -}}
+| {{ .Rule.ID }} | {{ .Rule.Title }} | {{ .FiredAtTick }} | {{ .Rule.Category }} | {{ .FilePath }} |
+{{ end }}
+{{ else }}
+## ✅ Auto-Applied Changes
+
+No changes were auto-applied. This means either:
+- All detected issues require manual action (guided/inform_only rules), or
+- The auto rules detected no patterns in your specific configuration.
+
+{{ end }}
+{{ if .GuidedEffects }}
+---
+
+## 📋 Manual Action Required
+
+The following issues were detected but **cannot be auto-applied** — they require manual changes to your config, startup arguments, dashboards, or pipelines.
+
+{{ range .GuidedEffects -}}
+### {{ .Rule.ID }} — {{ .Rule.Title }} `{{ .FiredAtTick }}` [{{ .Rule.Category | upper }}]
+
+**File:** `{{ .FilePath }}`  
+**Action:** {{ .Rule.Description }}
+{{ if .Rule.Migration.After }}
+**Config Example:**
+```yaml
+{{ .Rule.Migration.After }}
+```
+{{ end }}{{ if $.IncludeGuidance }}{{ if .Rule.Guidance }}
+**Operational Guidance:**
+{{ .Rule.Guidance }}
+{{ end }}{{ end }}
+{{ end }}
+{{ end }}
+{{ if .CommentEffects }}
+---
+
+## 📝 Commented-Out Config Processed
+
+These rules matched **commented-out** configuration. Renames were applied inside the
+comments and, where a rule provides upgrade guidance, an annotation was injected
+immediately above the commented component. Nothing in your active config changed —
+review the injected notes before you re-enable any of these templates.
+
+| ID | Rule | Version | Category | File |
+|---|---|---|---|---|
+{{ range .CommentEffects -}}
+| {{ .Rule.ID }} | {{ .Rule.Title }} | {{ .FiredAtTick }} | {{ .Rule.Category }} | {{ .FilePath }} |
+{{ end }}
+{{ end }}
+{{ if .Warnings }}
+---
+
+## ⚠ Warnings
+
+{{ range .Warnings }}
+- {{ . }}
+{{ end }}{{ end }}
+
+---
+
+## Topology Validation
+{{ if .TopologyIssues }}
+{{ range .TopologyIssues -}}
+**[{{ .Severity | upper }}]** {{ .File }}: {{ .Message }}{{ if .Detail }}  
+  → {{ .Detail }}{{ end }}
+{{ end }}
+{{ else }}
+✅ No topology issues detected. Pipeline connectivity looks correct.
+{{ end }}
+
+---
+
+## Next Steps
+
+1. Review the modified config files listed in the "Auto-Applied" section above
+2. Work through each item in the "Manual Action Required" section
+3. Run `otelcol validate --config <file>` against each updated file
+4. Deploy to a non-production environment first
+5. Monitor collector logs after deployment for unexpected errors

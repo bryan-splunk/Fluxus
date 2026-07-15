@@ -1,0 +1,51 @@
+id: P1-09
+category: p1
+introduced: "0.147"
+title: "kafka Receiver — Removed Keys (topic / exclude_topic / default_fetch_size)"
+look_for:
+  - path: $.receivers.kafka.topic
+    match: exists
+  - path: $.receivers.kafka.exclude_topic
+    match: exists
+  - path: $.receivers.kafka.default_fetch_size
+    match: exists
+  - path: $.receivers.kafka.topic
+    match: exists
+    in_comments: true
+  - path: $.receivers.kafka.exclude_topic
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.kafka
+      comment_text: |
+        # UPGRADE(P1-09 v0.147): kafka receiver topic/exclude_topic/default_fetch_size removed.
+        # Collector fails to start if these keys are present.
+        # ACTION: topic → topics: [list], exclude_topic → exclude_topics: [list],
+        # default_fetch_size → max_fetch_size (Franz-go, e.g. 50MiB).
+        exclude_topic: bad-topic
+        default_fetch_size: 1048576
+  after: |
+    receivers:
+      kafka:
+        topics: [my-topic, other-topic]
+        exclude_topics: [bad-topic]
+        # Franz-go equivalent for fetch size:
+        max_fetch_size: 50MiB
+guidance: |
+  Remove the removed keys from the kafka receiver:
+  - topic: → replace with topics: [list-of-topics]
+  - exclude_topic: → replace with exclude_topics: [list]
+  - default_fetch_size: → replace with max_fetch_size: (e.g. 50MiB) for Franz-go
+
+  If you were using a single topic, convert topic: my-topic to topics: [my-topic].
+  If multiple topics are needed, list all of them in the topics: list.
+description: >-
+  Three fields were removed from the kafka receiver across versions 0.141–0.147: topic
+  (removed 0.141/0.147), exclude_topic (removed 0.147), and default_fetch_size (removed
+  0.144, Sarama-only). The collector fails to start if any of these are present. Replace
+  topic with topics (a list), exclude_topic with exclude_topics (a list), and default_fetch_size
+  with max_fetch_size (Franz-go field).
+see_also:
+  - P2-01

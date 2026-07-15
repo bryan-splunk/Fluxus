@@ -1,0 +1,19 @@
+cases:
+  - name: "fires when docker_observer extension present"
+    config: |
+      extensions:
+        docker_observer: {}
+    should_fire: true
+
+  - name: "fires when docker_stats receiver present"
+    config: |
+      receivers:
+        docker_stats:
+          endpoint: unix:///var/run/docker.sock
+    should_fire: true
+
+  - name: "silent when neither present"
+    config: |
+      extensions:
+        health_check: {}
+    should_fire: false

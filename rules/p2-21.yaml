@@ -1,0 +1,49 @@
+id: P2-21
+category: p2
+introduced: "0.120"
+title: "activedirectoryds Receiver — Attribute Typo Fixed (distingushed_names → distinguished_names)"
+look_for:
+  - path: $.receivers.active_directory_ds
+    match: exists
+  - path: $.receivers.activedirectoryds
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.active_directory_ds
+      comment_text: |
+        # UPGRADE(P2-21 v0.120): activedirectoryds attribute typo fixed — distingushed_names → distinguished_names.
+        # ACTION: search all OTTL rules, dashboards, and searches for 'distingushed_names' and replace with 'distinguished_names'.
+    - comment_path: $.receivers.activedirectoryds
+      comment_text: |
+        # UPGRADE(P2-21 v0.120): attribute typo fixed: distingushed_names → distinguished_names.
+        # Update OTTL rules and dashboards referencing the old misspelled attribute name.
+    # Before 0.120 — attribute had a typo:
+    # activedirectoryds emitted: distingushed_names  (missing 'i')
+    #
+    # Example OTTL using old typo:
+    # where attributes["distingushed_names"] == "CN=Admin"
+  after: |
+    # After 0.120 — typo corrected:
+    # activedirectoryds emits: distinguished_names
+    #
+    # Example OTTL fixed:
+    # where attributes["distinguished_names"] == "CN=Admin"
+    #
+    # Search all configs and dashboards for 'distingushed_names' and replace with 'distinguished_names'.
+guidance: |
+  Search across all collector configs, OTTL statements, and dashboards for the misspelled
+  attribute name distingushed_names (missing the 'i' in 'distinguished') and replace
+  with the corrected name distinguished_names.
+
+  Example OTTL fix:
+  - OLD: where attributes["distingushed_names"] == "CN=Admin"
+  - NEW: where attributes["distinguished_names"] == "CN=Admin"
+
+  No YAML config structure change is required — this is a string value update only.
+description: >-
+  In 0.120, a typo in the activedirectoryds receiver attribute name was fixed. The attribute
+  distingushed_names (missing the 'i') was corrected to distinguished_names. Any OTTL
+  statements, filter processor conditions, dashboards, or downstream systems that reference
+  the old misspelled attribute name will silently stop matching after the upgrade. Search
+  all configs and dashboards for distingushed_names and replace with distinguished_names.

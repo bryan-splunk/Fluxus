@@ -1,0 +1,51 @@
+id: P2-30
+category: p2
+introduced: "0.125"
+title: "otelcol.component.kind Attribute Values Changed to Lowercase"
+look_for:
+  - path: $.processors.filter
+    match: exists
+  - path: $.processors.transform
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.processors.filter
+      comment_text: |
+        # UPGRADE(P2-30 v0.125): otelcol.component.kind attribute values changed to lowercase.
+        # Before: "Receiver", "Exporter", "Processor"  →  After: "receiver", "exporter", "processor"
+        # ACTION: update all OTTL conditions and dashboard queries using this attribute.
+    - comment_path: $.processors.transform
+      comment_text: |
+        # UPGRADE(P2-30 v0.125): otelcol.component.kind values changed to lowercase (Receiver→receiver etc.).
+        # Update OTTL comparisons using this attribute.
+    # Before 0.125 — title case values:
+    # attributes["otelcol.component.kind"] == "Receiver"
+    # attributes["otelcol.component.kind"] == "Exporter"
+    # attributes["otelcol.component.kind"] == "Processor"
+  after: |
+    # After 0.125 — lowercase values:
+    # attributes["otelcol.component.kind"] == "receiver"
+    # attributes["otelcol.component.kind"] == "exporter"
+    # attributes["otelcol.component.kind"] == "processor"
+    #
+    # No collector YAML config change required.
+    # Update all OTTL conditions, filter rules, and dashboard queries.
+guidance: |
+  Update all OTTL conditions, filter rules, and dashboard queries to use lowercase
+  otelcol.component.kind values:
+  - Receiver  → receiver
+  - Exporter  → exporter
+  - Processor → processor
+  - Connector → connector
+  - Extension → extension
+
+  No YAML config change is required — this is a string value update in OTTL statements
+  and query/dashboard expressions only.
+description: >-
+  In 0.125, the values of the otelcol.component.kind attribute in internal collector
+  telemetry changed from title case to lowercase (Receiver → receiver, Exporter → exporter,
+  Processor → processor). Any OTTL statements, filter processor conditions, dashboards, or
+  downstream alert rules that use exact-match comparisons against the old capitalized values
+  will silently stop matching. No collector YAML config change is required — update all
+  OTTL conditions and dashboard queries to use lowercase values.

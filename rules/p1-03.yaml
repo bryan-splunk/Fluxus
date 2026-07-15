@@ -1,0 +1,50 @@
+id: P1-03
+category: p1
+introduced: "0.147"
+title: "sapm Exporter Removed"
+look_for:
+  - path: $.exporters.sapm
+    match: exists
+  - path: $.exporters.sapm
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete the sapm exporter definition — its presence causes startup failure.
+    - from: $.exporters.sapm
+      to: ""
+    # Remove 'sapm' from every pipeline exporter array.
+    - sequence_path: $.service.pipelines.*.exporters
+      old_value: sapm
+      new_value: ""
+  before: |
+    exporters:
+      sapm:
+        endpoint: https://ingest.us0.signalfx.com/v2/trace
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+    service:
+      pipelines:
+        traces:
+          exporters: [sapm]
+  after: |
+    # sapm exporter and all pipeline references removed automatically.
+    # Add the otlphttp exporter manually with the updated endpoint:
+    exporters:
+      otlphttp:
+        endpoint: https://ingest.us0.signalfx.com/v2/trace/otlp
+        headers:
+          X-SF-Token: "${env:SPLUNK_ACCESS_TOKEN}"
+guidance: |
+  Remove the sapm exporter definition and replace it with the otlphttp exporter.
+  Update the endpoint to the OTLP-format URL (append /v2/trace/otlp to the ingest host).
+  Move the Splunk access token from the sapm access_token field to an
+  X-SF-Token entry under headers: in the otlphttp exporter.
+  Update all pipeline exporters lists to reference otlphttp instead of sapm.
+description: >-
+  The sapm exporter was removed in 0.147. Any config that defines a sapm exporter will
+  cause the collector to fail to start. The engine automatically removes the sapm exporter
+  definition and cleans up all pipeline exporter references. Replace with the otlphttp
+  exporter manually — the endpoint URL and auth header configuration are deployment-specific.
+see_also:
+  - P1-02

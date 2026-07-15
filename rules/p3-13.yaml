@@ -1,0 +1,35 @@
+id: P3-13
+category: p3
+introduced: "0.123"
+title: "k8sattributes k8sattr.rfc3339 Gate Removed"
+look_for:
+  - path: $.processors.k8s_attributes
+    match: exists
+  - path: $.processors.k8sattributes
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.processors.k8s_attributes
+      comment_text: |
+        # UPGRADE(P3-13 v0.123): k8sattr.rfc3339 feature gate removed — RFC 3339 timestamps always used.
+        # Remove --feature-gates=processor.k8sattributes.k8sattr.rfc3339 from startup if present (causes error).
+    - comment_path: $.processors.k8sattributes
+      comment_text: |
+        # UPGRADE(P3-13 v0.123): k8sattr.rfc3339 gate removed. Remove from startup args to avoid 'unknown feature gate' error.
+  after: |
+    # Remove the flag from all startup configuration.
+    # RFC 3339 timestamp formatting for k8s attributes is now always used.
+guidance: |
+  Remove the processor.k8sattributes.k8sattr.rfc3339 feature gate flag from all service
+  startup arguments (systemd unit files, launch scripts, Helm values, Windows service
+  registry, etc.).
+
+  RFC 3339 timestamp formatting for k8s attributes is now always used. Specifying the
+  (now removed) gate causes an "unknown feature gate" startup error.
+description: >-
+  In 0.123, the processor.k8sattributes.k8sattr.rfc3339 feature gate was stabilized and
+  removed. RFC 3339 timestamp formatting for Kubernetes attributes in the k8s_attributes
+  processor is now always used. Specifying the gate in startup arguments causes an "unknown
+  feature gate" error. Remove the flag from all startup configurations (systemd unit files,
+  Helm chart values, Windows service registry, etc.).

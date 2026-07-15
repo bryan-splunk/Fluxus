@@ -1,0 +1,59 @@
+id: P1-18
+category: p1
+introduced: "0.142"
+title: "resourcedetection Processor — attributes Field Removed"
+look_for:
+  - path: $.processors.resourcedetection.attributes
+    match: exists
+  - path: $.processors.resource_detection.attributes
+    match: exists
+  - path: $.processors.resourcedetection.attributes
+    match: exists
+    in_comments: true
+  - path: $.processors.resource_detection.attributes
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete attributes from the old component name (resourcedetection).
+    - from: $.processors.resourcedetection.attributes
+      to: ""
+    # Delete attributes from the new component name (resource_detection).
+    - from: $.processors.resource_detection.attributes
+      to: ""
+  before: |
+    processors:
+      resourcedetection:
+        detectors: [gcp, ec2]
+        attributes: [cloud.region, cloud.account.id]
+  after: |
+    # attributes field removed automatically.
+    # Use a separate resource processor to filter detected attributes:
+    processors:
+      resource_detection:
+        detectors: [gcp, ec2]
+      resource:
+        attributes:
+          - key: cloud.region
+            action: keep
+guidance: |
+  Remove the attributes: field from the resourcedetection or resource_detection processor.
+  If you need to filter or set resource attributes, add a separate resource processor after
+  the resourcedetection processor in your pipeline and configure it there:
+
+    processors:
+      resource_detection:
+        detectors: [gcp, ec2]
+      resource:
+        attributes:
+          - key: cloud.region
+            action: keep
+
+  Then update the pipeline processor order to run resource_detection before resource.
+description: >-
+  The attributes field directly under a resourcedetection (or resource_detection) processor
+  was removed in 0.142. The collector fails to start if this field is present. The engine
+  automatically removes the attributes field. To filter detected attributes, add a separate
+  resource processor after resource_detection in your pipeline — the specific attribute list
+  is deployment-specific and must be configured manually.

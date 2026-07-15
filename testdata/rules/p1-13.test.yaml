@@ -1,0 +1,30 @@
+cases:
+  - name: "fires when filter processor present and injects error_mode default"
+    config: |
+      processors:
+        filter:
+          metrics:
+            include:
+              match_type: strict
+              metric_names: [cpu.usage]
+    should_fire: true
+    apply_contains:
+      - "error_mode: ignore"
+
+  - name: "fires when transform processor present and injects error_mode default"
+    config: |
+      processors:
+        transform:
+          metric_statements:
+            - context: metric
+              statements:
+                - set(name, "new") where name == "old"
+    should_fire: true
+    apply_contains:
+      - "error_mode: ignore"
+
+  - name: "silent when neither processor present"
+    config: |
+      processors:
+        batch: {}
+    should_fire: false

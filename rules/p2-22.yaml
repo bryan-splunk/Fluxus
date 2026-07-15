@@ -1,0 +1,48 @@
+id: P2-22
+category: p2
+introduced: "0.121"
+title: "confighttp — HTTP Client Options Changed from Nullable to Integer"
+look_for:
+  - path: $.exporters.*.http_client_config.max_idle_conns
+    match: exists
+  - path: $.exporters.*.http_client_config.max_idle_conns_per_host
+    match: exists
+  - path: $.exporters.*.http_client_config.max_conns_per_host
+    match: exists
+  - path: $.exporters.*.http_client_config.idle_conn_timeout
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.exporters
+      comment_text: |
+        # UPGRADE(P2-22 v0.121): confighttp HTTP client options no longer accept null — use 0 for unlimited.
+        # Affected keys: max_idle_conns, max_idle_conns_per_host, max_conns_per_host, idle_conn_timeout
+        # Change any null values to 0 or omit the key (default is 0 = unlimited).
+  before: |
+    exporters:
+      otlphttp:
+        http_client_config:
+          max_idle_conns: null          # INVALID in 0.121+
+          max_idle_conns_per_host: null
+          idle_conn_timeout: null
+  after: |
+    # After 0.121 — use 0 for unlimited, or omit entirely (default is 0):
+    exporters:
+      otlphttp:
+        http_client_config:
+          max_idle_conns: 0         # 0 = unlimited (same as previous null behavior)
+          # or simply omit — 0 is the default
+guidance: |
+  Replace any null values for max_idle_conns, max_idle_conns_per_host, max_conns_per_host,
+  or idle_conn_timeout with 0 (which preserves the "unlimited" behavior), or remove the
+  field entirely (0 is the default).
+
+  These fields are present on HTTP client config blocks used by receivers, exporters, and
+  extensions. Search the full config for null values under any http_client_config: block.
+description: >-
+  In 0.121, four HTTP client configuration options changed from nullable to integer type:
+  max_idle_conns, max_idle_conns_per_host, max_conns_per_host, and idle_conn_timeout.
+  Setting any of these to null will now cause a YAML parse error. Replace null values with
+  0 (which preserves the "unlimited" behavior) or omit the field entirely (default is 0).
+  This applies to any component (receiver, exporter, extension) that uses HTTP client settings.

@@ -1,0 +1,82 @@
+id: P2-32
+category: p2
+introduced: "0.125"
+title: "kubeletstats — CPU Usage Metrics Migration (utilization → usage)"
+look_for:
+  - path: $.receivers.kubeletstats
+    match: exists
+  - path: $.receivers.kubelet_stats
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.kubeletstats
+      comment_text: |
+        # UPGRADE(P2-32 v0.125): kubeletstats CPU metrics migration — utilization → usage names.
+        # Gate became STABLE in 0.130 (--feature-gates=-receiver.kubeletstats.enableCPUUsageMetrics FAILS 0.130+).
+        # Deprecated: container.cpu.utilization, k8s.pod.cpu.utilization, k8s.node.cpu.utilization
+        # Replacement: container.cpu.usage, k8s.pod.cpu.usage, k8s.node.cpu.usage
+        # ACTION: update dashboards and alerts to use .usage variants.
+    - comment_path: $.receivers.kubelet_stats
+      comment_text: |
+        # UPGRADE(P2-32 v0.125): kubelet_stats CPU .utilization metrics replaced by .usage variants (stable 0.130).
+        # Update dashboards/alerts: container.cpu.utilization → container.cpu.usage etc.
+  before: |
+    # Before 0.125 — deprecated utilization metrics:
+    # container.cpu.utilization
+    # k8s.pod.cpu.utilization
+    # k8s.node.cpu.utilization
+    receivers:
+      kubelet_stats: {}
+  after: |
+    # After 0.125+ — replacement usage metrics (stable from 0.130):
+    # container.cpu.usage
+    # k8s.pod.cpu.usage
+    # k8s.node.cpu.usage
+
+    # To keep deprecated utilization metrics during transition (0.125–0.129 only):
+    receivers:
+      kubelet_stats:
+        metrics:
+          container.cpu.utilization:
+            enabled: true   # deprecated — re-enable during migration
+          k8s.pod.cpu.utilization:
+            enabled: true
+          k8s.node.cpu.utilization:
+            enabled: true
+
+    # WARNING: --feature-gates=-receiver.kubeletstats.enableCPUUsageMetrics
+    # FAILS collector startup from 0.130+ (gate became stable).
+guidance: |
+  Begin migrating dashboards and alerts from the deprecated .utilization metrics to the
+  new .usage metrics:
+  - container.cpu.utilization → container.cpu.usage
+  - k8s.pod.cpu.utilization  → k8s.pod.cpu.usage
+  - k8s.node.cpu.utilization → k8s.node.cpu.usage
+
+  In 0.125 both old and new metrics are emitted by default. In 0.130+ the deprecated
+  utilization metrics are off by default.
+
+  To keep deprecated metrics enabled during the transition window (0.125–0.129):
+    receivers:
+      kubelet_stats:
+        metrics:
+          container.cpu.utilization:
+            enabled: true
+          k8s.pod.cpu.utilization:
+            enabled: true
+          k8s.node.cpu.utilization:
+            enabled: true
+
+  WARNING: The enableCPUUsageMetrics gate became STABLE in 0.130 — using
+  --feature-gates=-receiver.kubeletstats.enableCPUUsageMetrics FAILS startup from 0.130+.
+description: >-
+  In 0.125, the kubeletstats/kubelet_stats receiver's enableCPUUsageMetrics feature gate
+  was promoted to beta, and became stable in 0.130. The deprecated .utilization metric
+  variants (container.cpu.utilization, k8s.pod.cpu.utilization, k8s.node.cpu.utilization)
+  are being replaced by .usage variants. In 0.125, both old and new metrics are emitted
+  by default. From 0.130+, the old deprecated metrics are off by default. Begin migrating
+  dashboards and alerts to the .usage metric variants. Re-enable deprecated metrics in
+  config during the migration window (0.125–0.129 only).
+see_also:
+  - P1-12

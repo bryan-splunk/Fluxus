@@ -1,0 +1,59 @@
+id: P1-22
+category: p1
+introduced: "0.121"
+title: "signalfx Exporter — translation_rules Removed"
+look_for:
+  - path: $.exporters.signalfx.translation_rules
+    match: exists
+  - path: $.exporters.signalfx.translation_rules
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete translation_rules from the signalfx exporter — causes startup failure.
+    - from: $.exporters.signalfx.translation_rules
+      to: ""
+  before: |
+    exporters:
+      signalfx:
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+        translation_rules:        # REMOVE this block
+          - action: rename_metrics
+            mapping:
+              old_metric: new_metric
+  after: |
+    # translation_rules removed automatically.
+    # Migrate metric transformations to a transform processor using OTTL:
+    processors:
+      transform:
+        metric_statements:
+          - context: metric
+            statements:
+              - set(name, "new_metric") where name == "old_metric"
+
+    exporters:
+      signalfx:
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+
+    service:
+      pipelines:
+        metrics:
+          processors: [..., transform]
+          exporters: [signalfx]
+guidance: |
+  Remove the translation_rules: block from the signalfx exporter and replace the metric
+  transformation logic with a transform processor.
+
+  The transform processor uses OTTL metric_statements to perform renaming and filtering.
+  See the official migration guide for a mapping of translation_rules actions to OTTL:
+  https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/exporter/signalfxexporter/docs/translation_rules_migration_guide.md
+
+  Add the transform processor to each pipeline that had the signalfx exporter, placing
+  it before signalfx in the processors list.
+description: >-
+  The translation_rules config option was removed from the signalfx exporter in 0.121.
+  Any config with a translation_rules block under the signalfx exporter will cause the
+  collector to fail to start. The engine automatically removes the translation_rules block.
+  Migrate metric transformations to a transform processor using OTTL metric_statements —
+  the OTTL statements themselves are config-specific and must be written manually.

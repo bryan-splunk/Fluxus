@@ -1,0 +1,58 @@
+id: P1-14
+category: p1
+introduced: "0.150"
+title: "OTTL — SetMap Error Handling Changed"
+look_for:
+  - path: $.processors.transform
+    match: exists
+  - path: $.processors.filter
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.processors.transform
+      comment_text: |
+        # UPGRADE(P1-14 v0.150): OTTL set() on map/slice fields now returns an error (was silent no-op).
+        # Statements like set(attributes["tags"], {"key":"val"}) that were previously ignored now propagate.
+        # ACTION: audit all set() calls on map or slice targets; set error_mode explicitly.
+    - comment_path: $.processors.filter
+      comment_text: |
+        # UPGRADE(P1-14 v0.150): OTTL set() on map/slice fields now errors (was silent no-op in pre-0.150).
+        # Ensure error_mode is explicitly configured to control whether errors propagate or are ignored.
+  before: |
+    processors:
+      transform:
+        metric_statements:
+          - context: datapoint
+            statements:
+              - set(attributes["tags"], {"key": "val"})  # was no-op, now errors
+  after: |
+    # Review all set() calls on map or slice fields.
+    # Statements that were silent no-ops may now produce errors.
+    # Pair with error_mode setting to control behavior:
+    processors:
+      transform:
+        error_mode: ignore   # or propagate
+        metric_statements:
+          - context: datapoint
+            statements:
+              - set(attributes["tags"], {"key": "val"})
+guidance: |
+  Review all set() calls on map or slice fields in your transform and filter processor
+  OTTL statements. Statements that were previously silent no-ops may now produce errors
+  that propagate (if error_mode: propagate) or are silently ignored (if error_mode: ignore).
+
+  Test in a staging environment against real data before deploying. Pay particular
+  attention to set() calls on attributes that are maps (e.g. resource.attributes) and
+  any set() calls on histogram-specific paths used on non-histogram data points.
+
+  See also P1-15 for type-strict setter issues introduced in the same release window.
+description: >-
+  In 0.150, OTTL set() calls targeting map or slice fields changed from silently failing
+  (no-op) to actively returning errors. Statements that previously did nothing may now
+  produce errors that propagate or get ignored depending on the error_mode setting on the
+  processor. Audit all set() calls on map or slice fields in transform and filter processors,
+  test in staging, and ensure error_mode is explicitly configured.
+see_also:
+  - P1-13
+  - P1-15

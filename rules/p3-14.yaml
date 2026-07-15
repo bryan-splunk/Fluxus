@@ -1,0 +1,49 @@
+id: P3-14
+category: p3
+introduced: "0.125"
+title: "k8sobjects Receiver — API Object Availability Check Moved to Startup"
+look_for:
+  - path: $.receivers.k8s_objects
+    match: exists
+  - path: $.receivers.k8sobjects
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.receivers.k8s_objects
+      comment_text: |
+        # UPGRADE(P3-14 v0.125): k8s_objects API object availability check moved to startup (not validate).
+        # 'otelcol validate' will NOT catch missing K8s API objects — test with a live cluster.
+    - comment_path: $.receivers.k8sobjects
+      comment_text: |
+        # UPGRADE(P3-14 v0.125): k8sobjects API availability check moved to startup — validate won't catch missing objects.
+  before: |
+    receivers:
+      k8s_objects:
+        objects:
+          - name: pods
+            mode: pull
+  after: |
+    # After 0.125 — K8s API object availability is checked at receiver startup, not validate.
+    # otelcol validate will NOT catch missing K8s API objects.
+    # Test with a live cluster to verify API object availability.
+    receivers:
+      k8s_objects:
+        objects:
+          - name: pods
+            mode: pull
+guidance: |
+  No config change required. Be aware that otelcol validate is no longer sufficient to
+  detect missing Kubernetes API objects — those errors only appear at runtime.
+
+  When testing configs that include k8s_objects receivers, test with a live cluster
+  rather than relying solely on otelcol validate. Update any CI/CD pipelines that used
+  config validation to catch K8s API availability issues — they now need an integration
+  test environment.
+description: >-
+  In 0.125, the k8s_objects (formerly k8sobjects) receiver moved its validation of
+  referenced Kubernetes API object availability from config validation time to receiver
+  startup time. This means running otelcol validate will no longer catch issues with missing
+  or unavailable K8s API objects — those errors only appear at runtime. No config change
+  is required. Be aware that static config validation is no longer sufficient for verifying
+  K8s API availability; test with a live cluster before deployment.

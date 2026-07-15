@@ -1,0 +1,48 @@
+id: P1-10
+category: p1
+introduced: "0.128"
+title: "sqlserver Receiver — Event Flag Renames"
+look_for:
+  - path: $.receivers.sqlserver.top_query_collection
+    match: exists
+  - path: $.receivers.sqlserver.query_sample_collection
+    match: exists
+  - path: $.receivers.sqlserver.top_query_collection
+    match: exists
+    in_comments: true
+  - path: $.receivers.sqlserver.query_sample_collection
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.sqlserver
+      comment_text: |
+        # UPGRADE(P1-10 v0.128): sqlserver top_query_collection / query_sample_collection removed.
+        # Collector fails to start if these old keys are present.
+        # ACTION: rename to events: { "db.server.top_query": { enabled: true }, "db.server.query_sample": { ... } }
+          enabled: true
+        query_sample_collection:
+          enabled: true
+  after: |
+    receivers:
+      sqlserver:
+        events:
+          "db.server.top_query":
+            enabled: true
+          "db.server.query_sample":
+            enabled: true
+guidance: |
+  Rename the top-level collection flags to the new events: sub-key syntax:
+  - top_query_collection: → events: "db.server.top_query": (enabled: true/false)
+  - query_sample_collection: → events: "db.server.query_sample": (enabled: true/false)
+
+  Both flags were renamed; the indentation structure changes from a flat key to a nested
+  events: map. Quote the event name strings as they contain dots.
+description: >-
+  The sqlserver receiver fields top_query_collection and query_sample_collection were removed
+  in 0.128 and replaced with a new events sub-key syntax. The collector fails to start if
+  the old field names are present. Rename to the events block using the new event name
+  strings db.server.top_query and db.server.query_sample.
+see_also:
+  - P2-12

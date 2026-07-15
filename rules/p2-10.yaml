@@ -1,0 +1,56 @@
+id: P2-10
+category: p2
+introduced: "0.148"
+title: "windows_event_log Receiver — event_data Format Changed to Flat Map"
+look_for:
+  - path: $.receivers.windows_event_log
+    match: exists
+  - path: $.receivers.windowseventlog
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.windows_event_log
+      comment_text: |
+        # UPGRADE(P2-10 v0.148): windows_event_log event_data format changed from array to flat map.
+        # Before: body["event_data"] = [{"ProcessId": "1234"}]
+        # After:  body["event_data"]["ProcessId"] = "1234"
+        # ACTION REQUIRED: update OTTL rules, Splunk searches using array indexing on event_data.
+        # To restore old format temporarily: add 'event_data_format: array' to this receiver.
+        # New body keys added: body["rendering_info"][...] and body["user_data"][...].
+  before: |
+    # Before 0.148 — event_data was an array:
+    # body["event_data"] = [{"ProcessId": "1234"}]
+    receivers:
+      windows_event_log:
+        channel: System
+  after: |
+    receivers:
+      windows_event_log:
+        channel: System
+        # UPGRADE(P2-10 v0.148): add event_data_format: array to restore pre-0.148 behavior
+        # while you update downstream queries. Remove once queries are updated.
+        event_data_format: array    # temporary — remove after updating OTTL/searches
+
+    # New body keys also added in 0.148:
+    # body["rendering_info"]["culture/channel/provider/message"]
+    # body["user_data"][...] (parsed key-value map)
+guidance: |
+  Audit all OTTL/filter rules, Splunk searches, and dashboards that inspect event_data.
+  The format changed from an array to a flat map:
+
+  Before 0.148:  body["event_data"] = [{"ProcessId": "1234"}]
+  After 0.148:   body["event_data"]["ProcessId"] = "1234"
+
+  To restore the previous array format, set event_data_format: array in the receiver config.
+
+  New body keys also added in 0.148 (informational):
+  - body["rendering_info"]["culture/channel/provider/message"]
+  - body["user_data"][...] (parsed key-value map, alternative to event_data)
+description: >-
+  In 0.148, the event_data field structure in the windows_event_log receiver changed from
+  an array of maps to a flat key-value map. Before: body["event_data"] = [{"ProcessId": "1234"}].
+  After: body["event_data"]["ProcessId"] = "1234". Downstream OTTL rules, Splunk searches,
+  and dashboards that parse event_data using array indexing will break. Audit all consumers
+  of event_data and update to flat map access patterns. Set event_data_format: array on the
+  receiver to restore the old format as a temporary migration aid.

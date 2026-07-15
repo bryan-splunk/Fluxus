@@ -1,0 +1,48 @@
+id: P1-08
+category: p1
+introduced: "0.148"
+title: "kafka Exporter — Top-Level topic/encoding Removed"
+look_for:
+  - path: $.exporters.kafka.topic
+    match: exists
+  - path: $.exporters.kafka.encoding
+    match: exists
+  - path: $.exporters.kafka.topic
+    match: exists
+    in_comments: true
+  - path: $.exporters.kafka.encoding
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.exporters.kafka
+      comment_text: |
+        # UPGRADE(P1-08 v0.148): kafka exporter top-level topic/encoding REMOVED — causes startup failure.
+        # ACTION: move topic and encoding into per-signal sub-keys:
+        #   kafka.logs.topic / kafka.logs.encoding
+        #   kafka.metrics.topic / kafka.metrics.encoding
+        #   kafka.traces.topic / kafka.traces.encoding  (only specify signals used in your pipeline)
+  after: |
+    exporters:
+      kafka:
+        logs:
+          topic: my-logs-topic
+          encoding: otlp_proto
+        metrics:
+          topic: my-metrics-topic
+          encoding: otlp_proto
+        traces:
+          topic: my-traces-topic
+          encoding: otlp_proto
+guidance: |
+  Remove the top-level topic: and encoding: fields from the kafka exporter.
+  Move them under per-signal sub-keys: logs:, metrics:, and traces:.
+  Each sub-key accepts its own topic and encoding values, allowing different topics per
+  signal type. If all signals should go to the same topic, repeat the value under each
+  sub-key that is in use.
+description: >-
+  Top-level topic and encoding fields directly under a kafka exporter were deprecated since
+  0.124 and removed in 0.148. Any config still using these top-level fields will cause the
+  collector to fail to start. Move topic and encoding into per-signal sub-keys: logs, metrics,
+  and traces. Only specify sub-keys for signal types actually used in your pipeline.

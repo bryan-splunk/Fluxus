@@ -1,0 +1,56 @@
+id: P2-06
+category: p2
+introduced: "0.152"
+title: "tail_sampling Processor — Invert Decisions Permanently Disabled"
+look_for:
+  - path: $.processors.tail_sampling
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.processors.tail_sampling
+      comment_text: |
+        # UPGRADE(P2-06 v0.152): tail_sampling invert_match permanently disabled (gate stabilized v0.152).
+        # Any policy with invert_match: true silently does nothing — the filter is skipped entirely.
+        # ACTION: migrate invert-match policies to explicit drop policies.
+        # Also remove --feature-gates=processor.tailsamplingprocessor.disableinvertdecisions from startup.
+  before: |
+    processors:
+      tail_sampling:
+        policies:
+          - name: drop-health-checks
+            type: string_attribute
+            string_attribute:
+              key: http.url
+              values: [/health]
+              invert_match: true   # NO LONGER WORKS
+  after: |
+    # Migrate invert-match logic to a dedicated drop policy.
+    # See tail_sampling processor documentation for drop policy syntax.
+    processors:
+      tail_sampling:
+        policies:
+          - name: drop-health-checks
+            type: drop_probability
+            # Use appropriate non-invert policy approach
+
+    # Remove this flag from startup if present:
+    # --feature-gates=processor.tailsamplingprocessor.disableinvertdecisions
+guidance: |
+  Migrate invert_match: true logic to dedicated drop policies in the tail_sampling processor.
+
+  The invert_match: true option is permanently disabled — it is a no-op as of 0.144 and
+  the gate was stabilized in 0.152. Leaving it in the config does not cause a startup error
+  but the policy will not behave as intended.
+
+  Also remove this feature gate flag if present:
+  - processor.tailsamplingprocessor.disableinvertdecisions
+
+  See the tail_sampling processor documentation for drop policy syntax as a replacement.
+description: >-
+  Invert decisions in the tail_sampling processor were permanently disabled. The
+  invert_match: true option on any policy has been a no-op since 0.144, and the feature
+  gate was stabilized in 0.152 making this permanent. Any config relying on invert_match
+  behavior silently stops filtering as expected. Migrate invert-match logic to dedicated
+  drop policies using the tail_sampling processor documentation. Remove the
+  processor.tailsamplingprocessor.disableinvertdecisions gate flag from startup arguments.

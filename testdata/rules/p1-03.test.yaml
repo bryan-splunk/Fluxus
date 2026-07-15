@@ -1,0 +1,21 @@
+cases:
+  - name: "fires when sapm exporter present and removes it"
+    config: |
+      exporters:
+        sapm:
+          endpoint: https://ingest.signalfx.com/v2/trace
+      service:
+        pipelines:
+          traces:
+            exporters: [sapm, otlp]
+    should_fire: true
+    apply_not_contains:
+      - "sapm:"
+    apply_contains:
+      - "exporters: [otlp]"
+
+  - name: "silent when sapm exporter absent"
+    config: |
+      exporters:
+        otlp: {}
+    should_fire: false

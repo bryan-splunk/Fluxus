@@ -1,0 +1,22 @@
+cases:
+  - name: "fires when otlp exporter has batcher block and migrates it"
+    config: |
+      exporters:
+        otlp:
+          endpoint: otelcol:4317
+          batcher:
+            min_size_items: 100
+            min_size_bytes: 512
+    should_fire: true
+    apply_contains:
+      - "sending_queue:"
+      - "batch:"
+    apply_not_contains:
+      - "batcher:"
+
+  - name: "silent when otlp exporter has no batcher"
+    config: |
+      exporters:
+        otlp:
+          endpoint: otelcol:4317
+    should_fire: false

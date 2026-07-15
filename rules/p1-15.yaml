@@ -1,0 +1,64 @@
+id: P1-15
+category: p1
+introduced: "0.150"
+title: "OTTL — Type-Strict Setters Now Error on Type Mismatch"
+look_for:
+  - path: $.processors.transform
+    match: exists
+  - path: $.processors.filter
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.processors.transform
+      comment_text: |
+        # UPGRADE(P1-15 v0.150): OTTL type-strict setters — assignments to type-mismatched paths now ERROR.
+        # Previously silently ignored (e.g. set(explicit_bounds,...) on non-histogram datapoints).
+        # ACTION: audit all set() calls and add type guards: '... where metric.type == METRIC_DATA_TYPE_HISTOGRAM'
+    - comment_path: $.processors.filter
+      comment_text: |
+        # UPGRADE(P1-15 v0.150): OTTL type-strict setters error on type mismatch (was silent no-op).
+        # Audit all filter/transform OTTL statements for type-mismatched path assignments.
+  before: |
+    processors:
+      transform:
+        metric_statements:
+          - context: datapoint
+            statements:
+              - set(explicit_bounds, [1.0])   # only valid on HistogramDataPoint
+              - set(bucket_counts, [1, 2, 3]) # only valid on HistogramDataPoint
+  after: |
+    # Ensure OTTL path assignments match the actual data point type:
+    # NumberDataPoint:    value_double, value_int, exemplars
+    # HistogramDataPoint: explicit_bounds, bucket_counts, count, sum, exemplars
+    # ExponentialHistogramDataPoint: scale, zero_count, positive.*, negative.*, count, sum
+    # SummaryDataPoint:   quantile_values, count, sum
+    processors:
+      transform:
+        error_mode: propagate
+        metric_statements:
+          - context: datapoint
+            statements:
+              - set(explicit_bounds, [1.0]) where metric.type == METRIC_DATA_TYPE_HISTOGRAM
+guidance: |
+  Audit all OTTL transform and filter processor configs for type-mismatched path assignments.
+  Type-invalid setters (e.g. setting histogram fields on non-histogram data points) now
+  return an error rather than being silently ignored.
+
+  Valid paths by data point type:
+  - NumberDataPoint: value_double, value_int, exemplars
+  - HistogramDataPoint: explicit_bounds, bucket_counts, count, sum, exemplars
+  - ExponentialHistogramDataPoint: scale, zero_count, positive.*, negative.*, count, sum
+  - SummaryDataPoint: quantile_values, count, sum
+
+  Test in a staging environment against real production data before upgrading.
+  See P1-13 for the related error_mode default change that affects how these errors surface.
+description: >-
+  Starting in 0.150 (continued in 0.153), OTTL setters that target histogram-specific
+  paths on non-histogram data points, or any type-incorrect path assignments, now return
+  an error instead of being silently ignored. Audit all OTTL transform and filter configs
+  for type-mismatched path assignments, test against real data in staging, and guard
+  statements with type-checking conditions where necessary.
+see_also:
+  - P1-13
+  - P1-14

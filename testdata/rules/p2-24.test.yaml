@@ -1,0 +1,22 @@
+cases:
+  - name: "fires when telemetry metrics level is basic"
+    config: |
+      service:
+        telemetry:
+          metrics:
+            level: basic
+    should_fire: true
+
+  - name: "silent when telemetry level is normal"
+    config: |
+      service:
+        telemetry:
+          metrics:
+            level: normal
+    should_fire: false
+
+  - name: "silent when no telemetry metrics level"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

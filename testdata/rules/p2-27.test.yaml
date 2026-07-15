@@ -1,0 +1,18 @@
+cases:
+  - name: "fires when splunkenterprise receiver present"
+    config: |
+      receivers:
+        splunkenterprise:
+          auth:
+            basicauth:
+              client_auth:
+                username: admin
+                password: changeme
+          endpoint: https://splunk.example.com:8089
+    should_fire: true
+
+  - name: "silent when splunkenterprise absent"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

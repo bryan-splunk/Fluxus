@@ -1,0 +1,62 @@
+id: P2-12
+category: p2
+introduced: "0.126"
+title: "sqlserver Receiver — Event Name Changes"
+look_for:
+  - path: $.receivers.sqlserver
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.sqlserver
+      comment_text: |
+        # UPGRADE(P2-12 v0.126): sqlserver receiver event names changed.
+        #   "top query" → "db.server.top_query"
+        #   "query sample" → "db.server.query_sample"
+        #   attribute: sqlserver.username → user.name
+        #   query sample body removed; data now in attributes.
+        # Also P2-28 (v0.124): db.lock_timeout unit changed ms→s (divide alert thresholds by 1000).
+        # Also (v0.139): lookback_time requires 's' suffix (e.g. 30 → 30s) — see guided note below.
+        # ACTION REQUIRED: update OTTL rules, Splunk searches, dashboards referencing old event names.
+  before: |
+    # Before 0.126 — old event names and attributes:
+    # Event name: "top query"
+    # Event name: "query sample"
+    # Attribute: sqlserver.username (in query sample events)
+    # lookback_time: 30  (no suffix)
+    receivers:
+      sqlserver:
+        lookback_time: 30
+  after: |
+    receivers:
+      sqlserver:
+        # UPGRADE(P2-12 v0.126): sqlserver receiver event names changed.
+        # ACTION REQUIRED: update OTTL rules, Splunk searches, dashboards.
+        # Also update lookback_time to use 's' suffix:
+        lookback_time: 30s
+guidance: |
+  Update OTTL rules, Splunk searches, and dashboards to use the new event names and
+  attribute names introduced in 0.126:
+
+  Event name changes:
+  - "top query"    → "db.server.top_query"
+  - "query sample" → "db.server.query_sample"
+
+  Attribute renamed:
+  - sqlserver.username → user.name (in query sample events)
+
+  Query sample body change:
+  - The body was removed entirely; data previously in the body is now in attributes.
+
+  Also in 0.139: lookback_time now requires an 's' suffix:
+  - lookback_time: 30   →   lookback_time: 30s
+description: >-
+  In 0.126, sqlserver receiver event names changed ("top query" → "db.server.top_query",
+  "query sample" → "db.server.query_sample"), the sqlserver.username attribute was renamed
+  to user.name in query sample events, and the query sample body was removed (data moved
+  to attributes). Additionally in 0.139, lookback_time requires an 's' time suffix (30 →
+  30s). Update OTTL rules, Splunk searches, and dashboards that reference the old event
+  names or attributes.
+see_also:
+  - P1-10
+  - P2-28

@@ -1,0 +1,74 @@
+id: P2-29
+category: p2
+introduced: "0.124"
+title: "Kafka — auth::tls Deprecated in Favour of Top-Level tls Config"
+look_for:
+  - path: $.receivers.kafka.auth.tls
+    match: exists
+  - path: $.exporters.kafka.auth.tls
+    match: exists
+  - path: $.receivers.kafka_metrics.auth.tls
+    match: exists
+  - path: $.receivers.kafkametrics.auth.tls
+    match: exists
+  - path: $.receivers.kafka.auth.tls
+    match: exists
+    in_comments: true
+  - path: $.exporters.kafka.auth.tls
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.kafka
+      comment_text: |
+        # UPGRADE(P2-29 v0.124): kafka auth.tls is deprecated → move to top-level tls: block.
+        # Before: auth.tls.ca_file / cert_file / key_file
+        # After:  tls.ca_file / cert_file / key_file (direct under receiver, not under auth)
+        # ACTION: move all auth.tls keys up one level to a sibling tls: block.
+    - comment_path: $.exporters.kafka
+      comment_text: |
+        # UPGRADE(P2-29 v0.124): kafka auth.tls is deprecated → move to top-level tls: block.
+        # Before: auth.tls.insecure_skip_verify / cert_file / ...
+        # After:  tls.insecure_skip_verify / cert_file / ...  (sibling of auth, not nested inside it)
+  before: |
+    receivers:
+      kafka:
+        auth:
+          tls:
+            ca_file: /etc/ssl/ca.pem
+            cert_file: /etc/ssl/cert.pem
+            key_file: /etc/ssl/key.pem
+
+    exporters:
+      kafka:
+        auth:
+          tls:
+            insecure_skip_verify: false
+  after: |
+    # Migrate to top-level tls: block:
+    receivers:
+      kafka:
+        tls:
+          ca_file: /etc/ssl/ca.pem
+          cert_file: /etc/ssl/cert.pem
+          key_file: /etc/ssl/key.pem
+
+    exporters:
+      kafka:
+        tls:
+          insecure_skip_verify: false
+guidance: |
+  Migrate the auth::tls nested path to the new top-level tls: block in all kafka receivers,
+  exporters, and kafka_metrics receivers. The auth::tls path still works in 0.124 but will
+  be removed in a future release.
+
+  Move all TLS fields (ca_file, cert_file, key_file, insecure_skip_verify, etc.) from
+  under auth: tls: to a new top-level tls: key at the same level as auth:.
+description: >-
+  In 0.124, the auth::tls nested path for TLS configuration in kafka receiver, exporter,
+  and kafka_metrics receiver was deprecated in favour of a new top-level tls block. The
+  old path still works in 0.124 but will be removed in a future release. Migrate to the
+  top-level tls block now to avoid a future breaking startup failure.
+see_also:
+  - P2-34

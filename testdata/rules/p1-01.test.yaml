@@ -1,0 +1,23 @@
+cases:
+  - name: "fires when routing processor present (old form causes startup failure)"
+    config: |
+      processors:
+        routing:
+          from_attribute: env
+          table:
+            - value: prod
+              exporters: [otlp/prod]
+    should_fire: true
+
+  - name: "silent when only routing connector present (already migrated)"
+    config: |
+      connectors:
+        routing:
+          default_pipelines: [traces/default]
+    should_fire: false
+
+  - name: "silent when no routing component at all"
+    config: |
+      processors:
+        batch: {}
+    should_fire: false

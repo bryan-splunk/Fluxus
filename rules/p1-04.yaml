@@ -1,0 +1,83 @@
+id: P1-04
+category: p1
+introduced: "0.153"
+title: "signalfx Receiver Removed"
+look_for:
+  - path: $.receivers.signalfx
+    match: exists
+  - path: $.receivers.signalfx
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete the signalfx receiver definition — its presence causes startup failure.
+    - from: $.receivers.signalfx
+      to: ""
+    # Remove 'signalfx' from every pipeline receiver array.
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: signalfx
+      new_value: ""
+    # Inject an upgrade notice on the signalfx EXPORTER (which still exists on gateway configs).
+    # This is the most visible anchor for the operational changes the IT team needs to act on.
+    - comment_path: $.exporters.signalfx
+      comment_once: true
+      comment_text: |
+        # [P1-04 UPGRADE v0.153] signalfx receiver PERMANENTLY REMOVED — collector fails to start if present.
+        # Agents pushing to port 9943 must be reconfigured to emit OTLP (port 4317 gRPC / 4318 HTTP).
+        # If ingest_url pointed to 127.0.0.1:9943 (removed receiver), update to Splunk ingest URL.
+        # sync_host_metadata: true must now be on the gateway-side exporter pointing to ingest, not agent.
+        # Also verify access_token_passthrough has been removed (see P1-05) — field was removed in v0.137.
+    # Also inject notice on service.pipelines for agent configs that lack a signalfx exporter.
+    - comment_path: $.service.pipelines
+      comment_text: |
+        # [P1-04 UPGRADE v0.153] signalfx receiver PERMANENTLY REMOVED — see receivers section.
+        # Replace signalfx receiver references with the otlp receiver (port 4317/4318).
+  before: |
+    receivers:
+      signalfx:
+        endpoint: 0.0.0.0:9943
+        include_metadata: true
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [signalfx]
+        logs:
+          receivers: [signalfx]
+  after: |
+    # signalfx receiver and all pipeline references removed automatically.
+    # Add the otlp receiver manually:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]   # update manually
+        logs:
+          receivers: [otlp]   # update manually
+guidance: |
+  Remove the signalfx receiver definition and any reference to it in pipeline receivers
+  lists. Replace it with the otlp receiver (gRPC port 4317, HTTP port 4318).
+
+  Also remove access_token_passthrough: from the signalfx receiver block if present
+  (that field was removed in 0.137 — see P1-05).
+
+  Agents previously pushing to port 9943 must be reconfigured to send OTLP. The Splunk
+  OTel agent and most supported SDKs support OTLP natively.
+description: >-
+  The signalfx receiver was deprecated in 0.146 and removed in 0.153. Any config that
+  defines a signalfx receiver will cause the collector to fail to start. The engine
+  automatically removes the signalfx receiver definition and cleans up all pipeline
+  receiver references. Replace with the otlp receiver manually — endpoint and protocol
+  selection are deployment-specific. Any agents previously pushing to port 9943 must be
+  reconfigured to emit OTLP to port 4317 (gRPC) or 4318 (HTTP). Also remove any
+  access_token_passthrough field inside the old signalfx receiver block (see P1-05).
+see_also:
+  - P1-05

@@ -1,0 +1,17 @@
+cases:
+  - name: "fires when kafka exporter has sending_queue.batch"
+    config: |
+      exporters:
+        kafka:
+          brokers: [kafka:9092]
+          sending_queue:
+            batch:
+              min_size: 100
+    should_fire: true
+
+  - name: "silent when kafka exporter has no sending_queue.batch"
+    config: |
+      exporters:
+        kafka:
+          brokers: [kafka:9092]
+    should_fire: false

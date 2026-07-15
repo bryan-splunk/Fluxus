@@ -1,0 +1,37 @@
+id: P2-16
+category: p2
+introduced: "0.151"
+title: "Windows MSI Download URL Changed to dl.observability.splunkcloud.com"
+look_for:
+  - path: $.receivers.prometheus
+    match: exists
+    in_comments: true
+migration:
+  strategy: inform_only
+  before: |
+    # Old MSI download URL in installer scripts:
+    # https://dl.signalfx.com/...
+  after: |
+    # New MSI download URL:
+    # https://dl.observability.splunkcloud.com/...
+
+    # Update all automation scripts, CI/CD pipelines, and infrastructure-as-code
+    # that reference the old dl.signalfx.com download URL.
+guidance: |
+  Update all automation scripts, CI/CD pipelines, and infrastructure-as-code that
+  download the Splunk OTel Collector MSI:
+
+  OLD download URL: dl.signalfx.com
+  NEW download URL: dl.observability.splunkcloud.com
+
+  Check Ansible playbooks, Terraform modules, PowerShell scripts, GitHub Actions,
+  and any other deployment automation for the old URL.
+description: >-
+  In 0.151, the Windows MSI download URL for the Splunk OTel Collector changed from
+  dl.signalfx.com to dl.observability.splunkcloud.com. Any automation scripts, CI/CD
+  pipelines, or infrastructure-as-code that download the MSI using the old URL will receive
+  a 404 or redirect, causing automated installs to fail. This is an operational/scripting
+  change rather than a collector config change — search all installer scripts and update
+  the base URL accordingly.
+see_also:
+  - P2-14

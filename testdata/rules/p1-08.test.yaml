@@ -1,0 +1,23 @@
+cases:
+  - name: "fires when kafka exporter has topic field"
+    config: |
+      exporters:
+        kafka:
+          brokers: [kafka:9092]
+          topic: otel-traces
+    should_fire: true
+
+  - name: "fires when kafka exporter has encoding field"
+    config: |
+      exporters:
+        kafka:
+          brokers: [kafka:9092]
+          encoding: otlp_proto
+    should_fire: true
+
+  - name: "silent when kafka exporter has neither removed field"
+    config: |
+      exporters:
+        kafka:
+          brokers: [kafka:9092]
+    should_fire: false

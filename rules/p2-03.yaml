@@ -1,0 +1,50 @@
+id: P2-03
+category: p2
+introduced: "0.152"
+title: "kafka_metrics Receiver — Sarama Removed, Franz-go Mandatory"
+look_for:
+  - path: $.receivers.kafkametrics
+    match: exists
+  - path: $.receivers.kafka_metrics
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.kafkametrics
+      comment_text: |
+        # UPGRADE(P2-03 v0.152): kafka_metrics — Sarama client removed, Franz-go is now mandatory.
+        # Remove --feature-gates=+receiver.kafkametricsreceiver.UseFranzGo from startup if present.
+        # Rename kafkametrics → kafka_metrics (canonical name; alias removed in future release).
+    - comment_path: $.receivers.kafka_metrics
+      comment_text: |
+        # UPGRADE(P2-03 v0.152): kafka_metrics — Sarama client removed, Franz-go is now mandatory.
+        # Remove --feature-gates=+receiver.kafkametricsreceiver.UseFranzGo from startup if present.
+
+  before: |
+    receivers:
+      kafkametrics:      # old name (alias still works in 0.153)
+        brokers: [kafka:9092]
+  after: |
+    receivers:
+      kafka_metrics:     # preferred canonical name (alias removed in future release)
+        brokers: [kafka:9092]
+    # Note: Sarama client is no longer available.
+    # Franz-go is now the only supported client for kafka_metrics receiver.
+guidance: |
+  Two actions required:
+
+  1. Remove the +receiver.kafkametricsreceiver.UseFranzGo feature gate flag from all
+     service startup arguments (launch scripts, systemd unit files, Windows service
+     registry, Helm chart values). Franz-go is now mandatory.
+
+  2. Rename the receiver component if using the old kafkametrics name:
+     kafkametrics → kafka_metrics (the alias still works in 0.153 but will be removed).
+description: >-
+  In 0.152, the Sarama client was removed from the kafka_metrics (formerly kafkametrics)
+  receiver. Franz-go is now mandatory. If the +receiver.kafkametricsreceiver.UseFranzGo
+  feature gate flag was present in startup arguments, remove it — it will cause a startup
+  warning and is no longer needed. Also rename the receiver from kafkametrics to kafka_metrics
+  (the alias still works in 0.153 but will be removed in a future release).
+see_also:
+  - P2-34
+  - P3-01

@@ -1,0 +1,26 @@
+cases:
+  - name: "fires when sqlserver receiver has top_query_collection"
+    config: |
+      receivers:
+        sqlserver:
+          collection_interval: 10s
+          top_query_collection:
+            enabled: true
+            max_top_queries_count: 100
+    should_fire: true
+
+  - name: "fires when sqlserver receiver has query_sample_collection"
+    config: |
+      receivers:
+        sqlserver:
+          collection_interval: 10s
+          query_sample_collection:
+            enabled: true
+    should_fire: true
+
+  - name: "silent when sqlserver has neither removed field"
+    config: |
+      receivers:
+        sqlserver:
+          collection_interval: 10s
+    should_fire: false

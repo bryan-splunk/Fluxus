@@ -1,0 +1,13 @@
+cases:
+  - name: "fires when zpages extension present"
+    config: |
+      extensions:
+        zpages:
+          endpoint: 0.0.0.0:55679
+    should_fire: true
+
+  - name: "silent when zpages absent"
+    config: |
+      extensions:
+        health_check: {}
+    should_fire: false

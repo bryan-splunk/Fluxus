@@ -1,0 +1,22 @@
+cases:
+  - name: "fires when cumulativetodelta present without explicit max_staleness"
+    config: |
+      processors:
+        cumulativetodelta:
+          include:
+            match_type: strict
+            metrics: [my.metric]
+    should_fire: true
+
+  - name: "silent when cumulativetodelta already has max_staleness set"
+    config: |
+      processors:
+        cumulativetodelta:
+          max_staleness: 0
+    should_fire: false
+
+  - name: "silent when cumulativetodelta absent"
+    config: |
+      processors:
+        batch: {}
+    should_fire: false

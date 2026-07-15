@@ -1,0 +1,20 @@
+cases:
+  - name: "fires when k8sattributes processor present"
+    config: |
+      processors:
+        k8sattributes:
+          passthrough: false
+    should_fire: true
+
+  - name: "fires when k8s_attributes processor present (already renamed)"
+    config: |
+      processors:
+        k8s_attributes:
+          passthrough: false
+    should_fire: true
+
+  - name: "silent when only other processors present"
+    config: |
+      processors:
+        batch: {}
+    should_fire: false

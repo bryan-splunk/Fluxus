@@ -1,0 +1,21 @@
+cases:
+  - name: "fires when k8sattributes has node_from_env_var"
+    config: |
+      processors:
+        k8sattributes:
+          node_from_env_var: K8S_NODE_NAME
+    should_fire: true
+
+  - name: "fires when k8s_attributes has node_from_env_var"
+    config: |
+      processors:
+        k8s_attributes:
+          node_from_env_var: K8S_NODE_NAME
+    should_fire: true
+
+  - name: "silent when node_from_env_var absent"
+    config: |
+      processors:
+        k8sattributes:
+          passthrough: false
+    should_fire: false

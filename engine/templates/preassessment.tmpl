@@ -1,0 +1,98 @@
+# Pre-Assessment Report
+**Generated:** {{ now }}  
+**Target Version:** {{ if .TargetVersion }}{{ .TargetVersion }}{{ else }}latest{{ end }}  
+**Files Scanned:** {{ len .PerFile }}
+
+---
+
+## Summary — All Files
+
+| Priority | Active Config | Commented Config | Total |
+|---|---|---|---|
+| 🔴 P1 Breaking  | {{ .GlobalCounts.P1Active }} | {{ .GlobalCounts.P1Comment }} | {{ .GlobalCounts.P1Total }} |
+| 🟡 P2 Degrading | {{ .GlobalCounts.P2Active }} | {{ .GlobalCounts.P2Comment }} | {{ .GlobalCounts.P2Total }} |
+| 🟢 P3 Advisory  | {{ .GlobalCounts.P3Active }} | {{ .GlobalCounts.P3Comment }} | {{ .GlobalCounts.P3Total }} |{{ if .GlobalConflicts }}
+| ⚠ Conflicts    | —             | —                | {{ len .GlobalConflicts }} |{{ end }}
+
+---
+
+## How to Apply
+
+```bash
+# Apply all changes
+fluxus apply --select all{{ if .TargetVersion }} --target-version {{ .TargetVersion }}{{ end }} {{ join .Files " " }}
+
+# Apply only P1 Breaking changes
+fluxus apply --select p1{{ if .TargetVersion }} --target-version {{ .TargetVersion }}{{ end }} {{ join .Files " " }}
+
+# Apply specific changes by ID
+fluxus apply --select P1-20,P2-18{{ if .TargetVersion }} --target-version {{ .TargetVersion }}{{ end }} {{ join .Files " " }}
+
+# Include commented-out config changes
+fluxus apply --select all --include-comments{{ if .TargetVersion }} --target-version {{ .TargetVersion }}{{ end }} {{ join .Files " " }}
+```
+{{ range .PerFile }}
+---
+
+## `{{ .FileName }}`
+
+| Priority | Active Config | Commented Config | Total |
+|---|---|---|---|
+| 🔴 P1 Breaking  | {{ .Counts.P1Active }} | {{ .Counts.P1Comment }} | {{ .Counts.P1Total }} |
+| 🟡 P2 Degrading | {{ .Counts.P2Active }} | {{ .Counts.P2Comment }} | {{ .Counts.P2Total }} |
+| 🟢 P3 Advisory  | {{ .Counts.P3Active }} | {{ .Counts.P3Comment }} | {{ .Counts.P3Total }} |{{ if .Conflicts }}
+| ⚠ Conflicts    | — | — | {{ len .Conflicts }} |{{ end }}
+{{ if .Active }}
+### Active Config Changes
+
+| # | Rule | Category | Version |
+|---|---|---|---|
+{{ range .Active }}| #{{ .Num }} | {{ .RuleID }} — {{ .Title }} | {{ .Category | upper }} | {{ .Version }} |
+{{ end }}
+{{ range .Active }}
+#### #{{ .Num }} · {{ .RuleID }} — {{ .Title }} `{{ .Version }}` [{{ .Category | upper }}]
+
+**Impact:** {{ .Description }}
+{{ if .Guidance }}
+**Guidance:**
+{{ .Guidance }}
+{{ end }}{{ if .Before }}**Before:**
+```yaml
+{{ .Before }}
+```
+
+**After:**
+```yaml
+{{ .After }}
+```
+{{ end }}{{ if .SeeAlso }}**See also:** {{ join .SeeAlso ", " }}
+{{ end }}{{ end }}{{ end }}{{ if .Comments }}
+### Commented-Out Config Changes
+
+> These changes apply to currently **commented-out** configuration sections.  
+> They will only be applied if you include **--include-comments** in your selection.
+{{ range .Comments }}
+#### #CC{{ .Num }} · {{ .RuleID }} — {{ .Title }} `{{ .Version }}` [{{ .Category | upper }}]
+
+**Impact:** {{ .Description }}
+{{ if .Guidance }}
+**Guidance:**
+{{ .Guidance }}
+{{ end }}{{ end }}{{ end }}{{ if .Future }}
+### Future Changes (Beyond Target Version)
+
+> Scanned for awareness — will NOT be applied in this run.
+{{ range .Future }}
+#### #F{{ .Num }} · {{ .RuleID }} — {{ .Title }} `{{ .Version }}` [{{ .Category | upper }}]
+
+**Impact:** {{ .Description }}
+{{ if .Guidance }}
+**Guidance:**
+{{ .Guidance }}
+{{ end }}{{ end }}{{ end }}{{ if .Conflicts }}
+### ⚠ Conflicts in This File
+
+| Rule 1 | Tick | Rule 2 | Tick | Description |
+|---|---|---|---|---|
+{{ range .Conflicts }}| {{ .Rule1ID }} | {{ .Tick1 }} | {{ .Rule2ID }} | {{ .Tick2 }} | {{ .Message }} |
+{{ end }}{{ end }}{{ end }}

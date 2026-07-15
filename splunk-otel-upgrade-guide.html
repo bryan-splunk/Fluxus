@@ -1,0 +1,2008 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Splunk OTel Collector Upgrade Guide — v0.120.0 → v0.153.0</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { mono: ['ui-monospace','SFMono-Regular','Menlo','Monaco','Consolas','monospace'] }
+        }
+      }
+    }
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    pre { white-space: pre; overflow-x: auto; }
+    .code-block {
+      background: #0d1117;
+      color: #e6edf3;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12.5px;
+      line-height: 1.7;
+      overflow-x: auto;
+      tab-size: 2;
+    }
+    .code-inline {
+      background: #1c2128;
+      color: #e6edf3;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88em;
+    }
+    body { background: #0d1117; color: #e6edf3; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; }
+    .callout-warning { background: rgba(187,128,9,0.1); border-color: #bb8009; }
+    .callout-info    { background: rgba(31,111,235,0.1); border-color: #1f6feb; }
+    .callout-danger  { background: rgba(248,81,73,0.1);  border-color: #f85149; }
+    .nav-btn-active  { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+    .nav-btn         { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+    .nav-btn:hover   { background: #30363d; }
+    table { border-collapse: collapse; width: 100%; }
+    th { background: #161b22; color: #8b949e; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 12px; text-align: left; border-bottom: 1px solid #30363d; }
+    td { padding: 8px 12px; font-size: 13px; border-bottom: 1px solid #21262d; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #161b22; }
+    .pill { display: inline-flex; align-items: center; border-radius: 9999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+    .badge-p3   { background: rgba(35,134,54,0.25);  color: #56d364; border: 1px solid #238636; }
+    .badge-p2 { background: rgba(187,128,9,0.25);  color: #e3b341; border: 1px solid #bb8009; }
+    .badge-p1 { background: rgba(248,81,73,0.25);  color: #ff7b72; border: 1px solid #f85149; }
+    details summary { cursor: pointer; user-select: none; }
+    details summary::-webkit-details-marker { display: none; }
+    .chevron { transition: transform 0.15s; }
+    details[open] .chevron { transform: rotate(90deg); }
+  </style>
+</head>
+<body x-data="{ active: 'overview' }" x-cloak class="min-h-full">
+
+  <!-- ── Header ── -->
+  <div class="sticky top-0 z-50 border-b border-neutral-700" style="background:#161b22">
+    <div class="max-w-6xl mx-auto px-6 py-5">
+      <div class="flex flex-wrap items-center gap-3 mb-2">
+        <h1 class="text-xl font-bold text-white">Splunk OTel Collector Upgrade Guide</h1>
+        <span class="pill" style="background:rgba(31,111,235,0.2);color:#58a6ff;border:1px solid #1f6feb">v0.120.0 → v0.153.0</span>
+      </div>
+      <p class="text-sm text-neutral-400 mb-4">Comprehensive reference for all breaking changes, component renames, removed monitors, and required configuration updates across 33 releases.</p>
+      <div class="flex flex-wrap gap-2">
+        <template x-for="tab in [
+          {id:'overview',     label:'Overview'},
+          {id:'renames',      label:'Component Renames'},
+          {id:'kafka',        label:'Kafka Migration'},
+          {id:'processors',   label:'Processors'},
+          {id:'receivers',    label:'Receivers'},
+          {id:'exporters',    label:'Exporters'},
+          {id:'ottl',         label:'OTTL Changes'},
+          {id:'splunk',       label:'Splunk-Specific'},
+          {id:'checklist',    label:'Upgrade Checklist'},
+        ]">
+          <button
+            :class="active === tab.id ? 'nav-btn-active' : 'nav-btn'"
+            class="px-3 py-1.5 rounded text-sm font-medium transition-colors cursor-pointer"
+            x-text="tab.label"
+            @click="active = tab.id"
+          ></button>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Content ── -->
+  <div class="max-w-6xl mx-auto px-6 py-8">
+
+    <!-- ═══════════════ OVERVIEW ═══════════════ -->
+    <div x-show="active === 'overview'" x-transition>
+      <h2 class="text-lg font-semibold text-white mb-4">Upgrade Overview</h2>
+
+      <div class="callout-warning border rounded-lg p-4 mb-6">
+        <p class="font-semibold text-yellow-400 mb-1">⚠ Large version jump</p>
+        <p class="text-sm text-neutral-300">This spans 33 releases with many independent breaking changes. Validate in a staging environment and work through the Upgrade Checklist section before touching production.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <div class="card p-4">
+          <p class="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-2">Component Renames</p>
+          <p class="text-sm text-neutral-300">The largest change is a systematic rename of 30+ components to <code class="code-inline">snake_case</code>. All old names have deprecated aliases — they still work today but will be removed. Update your config before aliases are dropped.</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-2">Kafka: Sarama Removed</p>
+          <p class="text-sm text-neutral-300">The legacy Sarama Kafka client is permanently removed from both the Kafka receiver and exporter. Franz-go is the only supported client. Remove <code class="code-inline">default_fetch_size</code>, <code class="code-inline">resolve_canonical_bootstrap_servers_only</code>, and the top-level <code class="code-inline">topic</code>/<code class="code-inline">encoding</code> exporter fields.</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-2">FluentD + Smart Agent</p>
+          <p class="text-sm text-neutral-300">FluentD is fully removed from all Splunk installers. 30+ Smart Agent collectd monitors are permanently removed. Every removed monitor has a native OTel receiver replacement — see the Splunk-Specific section.</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-2">Processor Error Mode Change</p>
+          <p class="text-sm text-neutral-300"><code class="code-inline">filter</code> and <code class="code-inline">transform</code> processors now default to <code class="code-inline">error_mode: ignore</code> (was <code class="code-inline">propagate</code>). Errors that would previously fail pipeline batches now silently pass. Review your OTTL configs.</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-2">SignalFx URL Change</p>
+          <p class="text-sm text-neutral-300">Default <code class="code-inline">api_url</code> and <code class="code-inline">ingest_url</code> derived from <code class="code-inline">realm</code> now point to <code class="code-inline">*.observability.splunkcloud.com</code> instead of <code class="code-inline">*.signalfx.com</code>. Update firewall allowlists.</p>
+        </div>
+        <div class="card p-4">
+          <p class="text-xs font-semibold text-neutral-400 uppercase tracking-wide mb-2">Internal Metrics Labels Removed</p>
+          <p class="text-sm text-neutral-300"><code class="code-inline">service_name</code>, <code class="code-inline">service_instance_id</code>, and <code class="code-inline">service_version</code> are no longer stamped on every individual metric series — they now only appear in <code class="code-inline">target_info</code>. Update dashboard queries that join on these labels.</p>
+        </div>
+      </div>
+
+      <h2 class="text-lg font-semibold text-white mb-3">Breaking Changes by Release</h2>
+      <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr><th style="width:90px">Version</th><th>Key Breaking Changes</th></tr></thead>
+            <tbody>
+              <tr><td class="font-mono text-blue-400">0.120</td><td>prometheus receiver: Prometheus 3.0 scraper — dots no longer escaped in metric names; internal metric renames (processor_filter_* → processor_filter.*); resource attrs service_name/instance_id/version → service.name/instance.id/version; routing connector match_once removed; tail_sampling decision timer us→ms; activedirectoryds distingushed_names typo fixed</td></tr>
+              <tr><td class="font-mono text-blue-400">0.121</td><td>signalfx exporter: translation_rules removed; awss3 exporter: s3_partition → s3_partition_format; confighttp: max_idle_conns/etc type null→integer; k8sattr.fieldExtractConfigRegex.disallow gate to stable; Oracle Linux 7 support dropped</td></tr>
+              <tr><td class="font-mono text-blue-400">0.122</td><td>batch processor telemetry no longer at 'basic' level — switch to 'normal'; sqlserver receiver: X.509 certs must have positive serial number</td></tr>
+              <tr><td class="font-mono text-red-400 font-semibold">0.123</td><td class="text-red-300 font-medium">service::telemetry::address must migrate to readers: format (gate STABLE in 0.128 — fallback flag FAILS startup from 0.128+); min_size_items/max_size_items removed from batch config; prometheusremotewrite: export_created_metric removed; sending_queue::blocking deprecated (removed 0.129 — use block_on_overflow); kafka EXPORTER + kafkametrics: client_id default changed sarama→otel-collector (ACL breakage!); auth.plain_text deprecated; k8sattr.rfc3339 gate removed</td></tr>
+              <tr><td class="font-mono text-blue-400">0.124</td><td>transform processor: Basic Config and Advanced Config cannot mix; splunkenterprise receiver: all metrics now opt-in except splunk.health; sqlserver db.lock_timeout unit ms→seconds; kafka auth::tls deprecated in favor of top-level tls:</td></tr>
+              <tr><td class="font-mono text-blue-400">0.125</td><td>otelcol.component.kind attribute values now lowercase; telemetry.newPipelineTelemetry on by default for logs/traces (scope attrs); kubeletstats enableCPUUsageMetrics gate to beta (cpu.utilization → cpu.usage; gate STABLE/permanent in 0.130 — flag FAILS startup from 0.130+); k8sattributes node_from_env_var is now a hard startup error if env var unset; sqlserver host.name/computer.name/instance.name moved to resource attributes</td></tr>
+              <tr><td class="font-mono text-yellow-400">0.126</td><td class="text-yellow-300">sqlserver receiver: event names changed (top query → db.server.top_query; query sample → db.server.query_sample); query sample body removed; sqlserver.username → user.name; prometheus receiver RemoveLegacyResourceAttributes gate BETA — net.host.name→server.address, net.host.port→server.port, http.scheme→url.scheme (dashboards break!)</td></tr>
+              <tr><td class="font-mono text-blue-400">0.127</td><td>New Pipeline Component Telemetry size metrics enabled by default (billing impact); sqlserver page.life_expectancy now emitted for all configs</td></tr>
+              <tr><td class="font-mono text-blue-400">0.128</td><td>sqlserver event flag renames (top_query_collection.enabled → events."db.server.top_query".enabled); OTTL profile lookup tables removed from profile object; telemetry.disableAddressFieldForInternalTelemetry gate STABLE — rollback flag FAILS startup from 0.128+</td></tr>
+              <tr><td class="font-mono text-red-400 font-semibold">0.129</td><td class="text-red-300 font-medium">sending_queue::blocking removed — use block_on_overflow (startup failure); prometheus RemoveLegacyResourceAttributes gate STABLE (net.host.name→server.address etc. now permanent); kafkareceiver internal metrics restructured</td></tr>
+              <tr><td class="font-mono text-yellow-400">0.130</td><td class="text-yellow-300">Kafka RECEIVER (Sarama) client ID config now honoured — default changes sarama→otel-collector (breaks ACLs); OTLP exporter deprecated batcher config removed (use sending_queue::batch); kubeletstats enableCPUUsageMetrics gate stable</td></tr>
+              <tr><td class="font-mono text-red-400 font-semibold">0.131</td><td class="text-red-300 font-medium">8 collectd/genericjmx monitors removed (activemq, cassandra, hadoop, kafka×3, solr, tomcat); smartagent/jaeger-grpc removed; IIS app pool metrics enabled by default</td></tr>
+              <tr><td class="font-mono text-blue-400">0.132</td><td>postgresql: query_sample_collection.enabled + top_query_collection.enabled flags removed — both now enabled by default</td></tr>
+              <tr><td class="font-mono text-blue-400">0.134</td><td>routingprocessor removed — use routing connector; normalize_gcp converter removed</td></tr>
+              <tr><td class="font-mono text-blue-400">0.135</td><td>sapm receiver removed; access_token_passthrough <strong>deprecated</strong> in signalfx receiver; k8sattributes allowLabelsAnnotationsSingular gate introduced (alpha)</td></tr>
+              <tr><td class="font-mono text-yellow-400">0.136</td><td class="text-yellow-300">kubeletstats: no-op config sections for disabled CPU utilization metrics now cause startup failure; Kafka client metrics publishing disabled</td></tr>
+              <tr><td class="font-mono text-blue-400">0.137</td><td>access_token_passthrough <strong>removed</strong> from signalfx receiver; spanmetrics excludeResourceMetrics gate added (opt-in, becomes default in 0.138)</td></tr>
+              <tr><td class="font-mono text-blue-400">0.138</td><td>SignalFx receiver removed from all default configs except gateway; sending_queue::batch has non-trivial defaults when set to empty</td></tr>
+              <tr><td class="font-mono text-blue-400">0.139</td><td>migratecheckpoint command removed; ciscoos receiver renamed from ciscoosreceiver; sqlserver lookback_time requires 's' suffix</td></tr>
+              <tr><td class="font-mono text-blue-400">0.140</td><td>ecs_task_observer removed; SignalFx receiver removed from gateway config; prometheus receiver no longer adjusts start time by default; tail_sampling latency metric replaced with cpu time metric</td></tr>
+              <tr><td class="font-mono text-blue-400">0.141</td><td>Kafka Franz-go to Stable for receiver+exporter (Sarama removed in 0.144); kafka receiver top-level topic/encoding removed; docker_observer Docker API default 1.24→1.44</td></tr>
+              <tr><td class="font-mono text-yellow-400">0.142</td><td class="text-yellow-300">Config debug endpoint (localhost:55554) removed; PRW 2.0 rc.4 requires Prometheus 3.8+; cumulativetodelta max_staleness default changed; resourcedetection attributes field removed; dockerstats Docker API default 1.24→1.44</td></tr>
+              <tr><td class="font-mono text-blue-400">0.143</td><td>prometheus: use_start_time_metric + start_time_metric_regex removed</td></tr>
+              <tr><td class="font-mono text-red-400 font-semibold">0.144</td><td class="text-red-300 font-medium">Kafka Sarama fully removed; 20+ Smart Agent monitors removed incl. collectd/jenkins; FluentD removed from installers; tail_sampling invert decisions off by default</td></tr>
+              <tr><td class="font-mono text-blue-400">0.145</td><td>FluentD removed from RPM/DEB/PowerShell; faas.id → faas.instance; azure_event_hub UseAzeventhubs gate stable; resourcedetection removeGCPFaasID gate stable</td></tr>
+              <tr><td class="font-mono text-blue-400">0.146</td><td>k8sattributes semantic convention feature gates added (alpha): EmitV1K8sConventions + DontEmitV0K8sConventions; <span class="text-orange-300 font-semibold">signalfx receiver formally deprecated</span> (use OTLP receiver instead)</td></tr>
+              <tr><td class="font-mono text-blue-400">0.147</td><td>resourcedetection gates removed; Azure EKS/VM cloud platform values changed (azure_eks → azure.eks); kafka receiver old topic/exclude_topic removed; MongoDB database attribute moved to db.namespace; sapm exporter removed</td></tr>
+              <tr><td class="font-mono text-yellow-400">0.148</td><td class="text-yellow-300">Kafka exporter top-level topic/encoding removed; kafka exporter batching requires explicit metadata_keys; splunk_hec batcher removed; Windows event_data flat map + rendering_info/user_data keys added; ECS memory units MiB; OTel metric units singular; MySQL/PostgreSQL query defaults off</td></tr>
+              <tr><td class="font-mono text-blue-400">0.149</td><td>7 collectd + 2 smartagent monitors removed; includeconfigsource delete_files removed; prometheus report_extra_scrape_metrics removed; service_name/id/version labels removed from individual metrics</td></tr>
+              <tr><td class="font-mono text-blue-400">0.150</td><td>OTTL setters now return errors for type mismatches; kubeletstats deprecated attributes disabled by default</td></tr>
+              <tr><td class="font-mono text-blue-400">0.151</td><td>SignalFx URLs → *.observability.splunkcloud.com; Windows MSI URL changed; default configs updated to canonical names; Jaeger DisableRemoteSampling gate stable; prometheus feature gates removed; k8s_attributes otelcol.k8s.pod.association metric disabled</td></tr>
+              <tr><td class="font-mono text-blue-400">0.152</td><td>spanmetrics includeCollectorInstanceID to beta (adds collector.instance.id); tail_sampling disableinvertdecisions stabilized; kafka_metrics Sarama removed; prometheusremotewrite add_metric_suffixes deprecated</td></tr>
+              <tr><td class="font-mono text-red-400 font-semibold">0.153</td><td class="text-red-300 font-medium">filter/transform default error_mode=ignore; OTTL datapoint setters type-strict; httpcheck metrics now in nanoseconds; Jaeger DisableRemoteSampling gate removed; clickhouse.json gate removed; Kafka resolve_canonical_bootstrap_servers_only + auth.sasl.version deprecated; <span class="font-bold">signalfx receiver REMOVED from Splunk distribution</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ RENAMES ═══════════════ -->
+    <div x-show="active === 'renames'" x-transition>
+      <h2 class="text-lg font-semibold text-white mb-4">Component Renames — snake_case Migration</h2>
+      <div class="callout-info border rounded-lg p-4 mb-4">
+        <p class="font-semibold text-blue-400 mb-1">ℹ Deprecated aliases still work today</p>
+        <p class="text-sm text-neutral-300">All legacy names remain available as deprecated aliases in 0.153. They will be removed in a future release. Migrate your config now to avoid startup failures later.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <span class="pill badge-p3">P3 Advisory</span><span class="text-xs text-neutral-400">All renames carry <strong>P3 Advisory</strong> impact — aliases still work in 0.153 but migration is required before they are removed.</span>
+      </div>
+      <p class="text-sm text-neutral-400 mb-4">A global initiative renamed ~30 components to <code class="code-inline">snake_case</code> between versions 0.145–0.153. Update every receiver, processor, connector, and exporter key in your <code class="code-inline">config.yaml</code>.</p>
+
+      <div class="card overflow-hidden mb-6">
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr><th>Type</th><th>Old Name (Deprecated)</th><th>New Canonical Name</th><th>Deprecated Since</th></tr></thead>
+            <tbody id="renamesTable">
+              <tr><td>receiver</td><td class="font-mono text-red-300">filelog</td><td class="font-mono text-green-300">file_log</td><td>0.149</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">fluentforward</td><td class="font-mono text-green-300">fluent_forward</td><td>0.151</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">hostmetrics</td><td class="font-mono text-green-300">host_metrics</td><td>0.151</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">k8sobjects</td><td class="font-mono text-green-300">k8s_objects</td><td>0.151</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">kubeletstats</td><td class="font-mono text-green-300">kubelet_stats</td><td>0.152</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">kafkametrics</td><td class="font-mono text-green-300">kafka_metrics</td><td>0.152</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">httpcheck</td><td class="font-mono text-green-300">http_check</td><td>0.150</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">tcpcheck</td><td class="font-mono text-green-300">tcp_check</td><td>0.152</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">tcplog</td><td class="font-mono text-green-300">tcp_log</td><td>0.150</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">udplog</td><td class="font-mono text-green-300">udp_log</td><td>0.150</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">windowseventlog</td><td class="font-mono text-green-300">windows_event_log</td><td>0.150</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">sshcheck</td><td class="font-mono text-green-300">ssh_check</td><td>0.151</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">tlscheck</td><td class="font-mono text-green-300">tls_check</td><td>0.150</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">filestats</td><td class="font-mono text-green-300">file_stats</td><td>0.151</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">namedpipe</td><td class="font-mono text-green-300">named_pipe</td><td>0.150</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">cloudfoundry</td><td class="font-mono text-green-300">cloud_foundry</td><td>0.152</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">azureeventhub</td><td class="font-mono text-green-300">azure_event_hub</td><td>0.145</td></tr>
+              <tr><td>receiver</td><td class="font-mono text-red-300">mongodbatlas</td><td class="font-mono text-green-300">mongodb_atlas</td><td>0.145</td></tr>
+              <tr><td>processor</td><td class="font-mono text-red-300">k8sattributes</td><td class="font-mono text-green-300">k8s_attributes</td><td>0.146</td></tr>
+              <tr><td>processor</td><td class="font-mono text-red-300">metricstransform</td><td class="font-mono text-green-300">metrics_transform</td><td>0.152</td></tr>
+              <tr><td>processor</td><td class="font-mono text-red-300">logdedup</td><td class="font-mono text-green-300">log_dedup</td><td>0.151</td></tr>
+              <tr><td>processor</td><td class="font-mono text-red-300">resourcedetection</td><td class="font-mono text-green-300">resource_detection</td><td>0.153</td></tr>
+              <tr><td>connector</td><td class="font-mono text-red-300">spanmetrics</td><td class="font-mono text-green-300">span_metrics</td><td>0.151</td></tr>
+              <tr><td>connector</td><td class="font-mono text-red-300">servicegraph</td><td class="font-mono text-green-300">service_graph</td><td>0.151</td></tr>
+              <tr><td>exporter</td><td class="font-mono text-red-300">loadbalancing</td><td class="font-mono text-green-300">load_balancing</td><td>0.153</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card overflow-hidden">
+        <div class="px-4 py-2 border-b border-neutral-700 text-xs font-semibold text-neutral-400 uppercase tracking-wide">Migration Example</div>
+        <div class="p-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-xs font-semibold text-red-400 mb-2">BEFORE — old names</p>
+              <pre class="code-block">receivers:
+  hostmetrics:
+    collection_interval: 10s
+  filelog:
+    include: [/var/log/*.log]
+  k8sobjects: {}
+
+processors:
+  k8sattributes: {}
+  resourcedetection:
+    detectors: [gcp, ec2]
+
+connectors:
+  spanmetrics: {}
+
+service:
+  pipelines:
+    metrics:
+      receivers: [hostmetrics]
+      processors: [k8sattributes]</pre>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-green-400 mb-2">AFTER — canonical snake_case</p>
+              <pre class="code-block">receivers:
+  host_metrics:
+    collection_interval: 10s
+  file_log:
+    include: [/var/log/*.log]
+  k8s_objects: {}
+
+processors:
+  k8s_attributes: {}
+  resource_detection:
+    detectors: [gcp, ec2]
+
+connectors:
+  span_metrics: {}
+
+service:
+  pipelines:
+    metrics:
+      receivers: [host_metrics]
+      processors: [k8s_attributes]</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ KAFKA ═══════════════ -->
+    <div x-show="active === 'kafka'" x-transition>
+      <h2 class="text-lg font-semibold text-white mb-4">Kafka Migration — Sarama → Franz-go</h2>
+      <div class="callout-danger border rounded-lg p-4 mb-4">
+        <p class="font-semibold text-red-400 mb-1">✖ Sarama permanently removed in 0.144</p>
+        <p class="text-sm text-neutral-300">The legacy Sarama Kafka client is permanently removed from both the Kafka receiver and exporter. Franz-go is the only supported client. All Sarama-only configuration keys must be removed or the collector will fail to start.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <span class="pill badge-p3">P3 Advisory</span><span class="text-xs text-neutral-400 mr-3">no config change needed</span>
+        <span class="pill badge-p2">P2 Degrading</span><span class="text-xs text-neutral-400 mr-3">config / planning required</span>
+        <span class="pill badge-p1">P1 Breaking</span><span class="text-xs text-neutral-400">startup failure or silent data loss</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">Kafka Receiver — Keys to Remove</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <p class="text-xs font-semibold text-red-400 mb-2">Remove these keys (0.144–0.147):</p>
+            <pre class="code-block"># REMOVED in 0.144 (Sarama-only):
+default_fetch_size: 1048576
+
+# REMOVED in 0.141/0.147:
+topic: my-topic           # use topics: [my-topic]
+exclude_topic: bad-topic  # use exclude_topics: [bad-topic]
+
+# Feature gate no longer needed:
+# --feature-gates=receiver.kafkareceiver.UseFranzGo</pre>
+            <p class="text-xs font-semibold text-green-400 mt-3 mb-2">Correct form:</p>
+            <pre class="code-block">receivers:
+  kafka:
+    topics: [my-topic, other-topic]
+    exclude_topics: [excluded-topic]
+    # Franz-go equivalent for fetch size:
+    max_fetch_size: 50MiB</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">Kafka Exporter — Keys to Remove</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <p class="text-xs font-semibold text-red-400 mb-2">Remove top-level fields (removed 0.148):</p>
+            <pre class="code-block">exporters:
+  kafka:
+    topic: my-topic      # REMOVED
+    encoding: otlp_proto # REMOVED</pre>
+            <p class="text-xs font-semibold text-green-400 mt-3 mb-2">Use per-signal fields instead:</p>
+            <pre class="code-block">exporters:
+  kafka:
+    logs:
+      topic: my-logs-topic
+      encoding: otlp_proto
+    metrics:
+      topic: my-metrics-topic
+      encoding: otlp_proto
+    traces:
+      topic: my-traces-topic
+      encoding: otlp_proto</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-yellow-400 uppercase tracking-wide">⚠ Kafka Receiver (Sarama) — Client ID Now Honoured (0.130)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout-danger border border-red-700 bg-red-950 rounded-lg p-3 mb-3">
+              <p class="text-sm text-red-300"><strong>Silent data loss risk (kafka RECEIVER only).</strong> In the Sarama-based kafka RECEIVER, the <code class="code-inline">client_id</code> config was always overridden to <code class="code-inline">"sarama"</code> before 0.130 (the field was effectively broken). In 0.130, the config is honoured and the default is now <code class="code-inline">"otel-collector"</code>. If Kafka broker ACLs grant access by client ID, those ACLs will silently stop matching. The collector starts with <strong>no error</strong> but produces and/or consumes nothing. Verify or update Kafka broker ACLs before upgrading. <strong>Note:</strong> kafka EXPORTER + kafkametrics changed client_id in 0.123 — see P2-34.</p>
+            </div>
+            <pre class="code-block"># OPTION A — Pin the old client ID (no Kafka ACL changes needed):
+receivers:
+  kafka:
+    client_id: sarama   # preserves legacy ACL match
+
+# OPTION B — Update Kafka ACLs to allow "otel-collector":
+# kafka-acls.sh --bootstrap-server &lt;host&gt;:9092 \
+#   --add --allow-principal User:&lt;collector-user&gt; \
+#   --operation Write --topic &lt;topic&gt; \
+#   --client-id otel-collector
+# Then remove old "sarama" ACL entry.
+# Also update dashboards/alerts filtering on client.id.</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-yellow-400 uppercase tracking-wide">⚠ kafka Exporter — Batching metadata_keys Required (0.148)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout-warning border rounded-lg p-3 mb-3">
+              <p class="text-sm text-yellow-300">If you have batching enabled with metadata partitioning, you must now explicitly set <code class="code-inline">metadata_keys</code>. The automatic wiring was removed in 0.148.</p>
+            </div>
+            <pre class="code-block"># Before 0.148 (implicit wiring):
+exporters:
+  kafka:
+    sending_queue:
+      batch:
+        enabled: true
+    include_metadata_keys: [tenant_id]
+
+# After 0.148 (explicit metadata_keys required):
+exporters:
+  kafka:
+    sending_queue:
+      batch:
+        enabled: true
+        partition:
+          metadata_keys: [tenant_id]   # must match include_metadata_keys
+    include_metadata_keys: [tenant_id]</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">kafka_metrics Receiver</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">In 0.152, <code class="code-inline">receiver.kafkametricsreceiver.UseFranzGo</code> was promoted to stable and the Sarama implementation was removed entirely.</p>
+            <pre class="code-block"># Remove this flag from startup if present:
+# --feature-gates=+receiver.kafkametricsreceiver.UseFranzGo
+
+# Rename the receiver (alias still available in 0.153):
+# kafkametrics  →  kafka_metrics</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">kafka — Deprecated No-Op Config Fields (0.153)</span>
+            <span class="pill badge-p3">P3 Advisory</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">Two Kafka client config fields became no-ops after the Sarama → Franz-go migration. They still parse in 0.153 but will be removed in a future release.</p>
+            <pre class="code-block"># DEPRECATED in 0.153 (no-ops — remove to avoid future failure):
+kafka:
+  resolve_canonical_bootstrap_servers_only: true
+    # Franz-go has no direct equivalent to this Sarama option
+
+  auth:
+    sasl:
+      version: 1
+        # Franz-go negotiates SASL handshake version automatically</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PROCESSORS ═══════════════ -->
+    <div x-show="active === 'processors'" x-transition>
+      <h2 class="text-lg font-semibold text-white mb-4">Processor Changes</h2>
+      <div class="callout-warning border rounded-lg p-4 mb-4">
+        <p class="font-semibold text-yellow-400 mb-1">⚠ Error mode behavior changed in 0.153</p>
+        <p class="text-sm text-neutral-300">The <code class="code-inline">filter</code> and <code class="code-inline">transform</code> processors now default to <code class="code-inline">error_mode: ignore</code>. If your pipelines relied on errors propagating (failing the batch), you must explicitly set <code class="code-inline">error_mode: propagate</code>.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <span class="pill badge-p3">P3 Advisory</span><span class="text-xs text-neutral-400 mr-3">no config change needed</span>
+        <span class="pill badge-p2">P2 Degrading</span><span class="text-xs text-neutral-400 mr-3">config / planning required</span>
+        <span class="pill badge-p1">P1 Breaking</span><span class="text-xs text-neutral-400">startup failure or silent data loss</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <!-- transform — mixed config (0.124) -->
+        <div class="card">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">transform Processor — Mixed Config Style (0.124)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-danger mb-3">The <code>transform</code> processor now requires exactly one config style per block. <strong>Basic Config</strong> (<code>metric_statements:</code> etc.) and <strong>Advanced Config</strong> (top-level <code>statements:</code>) cannot be mixed. Startup failure if both are present.</div>
+            <pre class="code-block"># BEFORE — mixing styles causes startup failure in 0.124+:
+processors:
+  transform:
+    statements:                 # Advanced Config
+      - set(attributes["env"], "prod")
+    metric_statements:          # Basic Config — CANNOT mix
+      - context: metric
+        statements:
+          - set(name, Concat([name, "_v2"], ""))
+
+# AFTER — choose ONE style:
+processors:
+  transform:
+    metric_statements:          # Pure Basic Config (recommended)
+      - context: metric
+        statements:
+          - set(name, Concat([name, "_v2"], ""))
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["env"], "prod")</pre>
+          </div>
+        </div>
+
+        <!-- k8sattributes node_from_env_var (0.125) -->
+        <div class="card">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">k8sattributes node_from_env_var Error (0.125)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-danger mb-3">If <code>node_from_env_var</code> references an environment variable that is not set, the collector now fails to start. Before 0.125 it silently monitored the entire cluster instead of a single node.</div>
+            <pre class="code-block"># Inject node name via Kubernetes Downward API (recommended):
+# In your pod spec:
+#   env:
+#     - name: MY_NODE_NAME
+#       valueFrom:
+#         fieldRef:
+#           fieldPath: spec.nodeName
+
+processors:
+  k8s_attributes:
+    node_from_env_var: MY_NODE_NAME   # safe when env var always set
+
+# To monitor whole cluster intentionally:
+processors:
+  k8s_attributes: {}   # omit node_from_env_var</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">routingprocessor Removed (0.134)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout-danger border border-red-700 bg-red-950 rounded-lg p-3 mb-3">
+              <p class="text-sm text-red-300">The <code class="code-inline">routingprocessor</code> was removed in 0.134. Migrate to the <code class="code-inline">routing</code> connector. This requires a <strong>complete pipeline rewiring</strong> — just swapping the component definition is not enough and will still cause a startup failure.</p>
+            </div>
+            <pre class="code-block"># BEFORE — processor (removed 0.134):
+processors:
+  routing:
+    from_attribute: X-Tenant
+    table:
+      - value: acme
+        exporters: [otlp/acme]
+      - value: beta
+        exporters: [otlp/beta]
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, routing]
+      exporters: [otlp/acme, otlp/beta]
+
+# AFTER — connector with FULL pipeline rewiring:
+connectors:
+  routing:
+    match_once: false
+    table:
+      - condition: attributes["X-Tenant"] == "acme"
+        pipelines: [traces/acme]
+      - condition: attributes["X-Tenant"] == "beta"
+        pipelines: [traces/beta]
+    default_pipelines: [traces/default]
+
+service:
+  pipelines:
+    traces/input:          # connector is the EXPORTER here
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [routing]
+
+    traces/acme:           # connector is the RECEIVER here
+      receivers: [routing]
+      exporters: [otlp/acme]
+
+    traces/beta:
+      receivers: [routing]
+      exporters: [otlp/beta]
+
+    traces/default:
+      receivers: [routing]
+      exporters: [otlp/default]
+
+# Also remove: datadogsemantics (0.148), DNS lookup processor skeleton (0.151)</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">filter / transform — Error Mode Default</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># To restore previous propagate behavior:
+processors:
+  filter:
+    error_mode: propagate   # was default before 0.153
+
+  transform:
+    error_mode: propagate   # was default before 0.153
+
+# To revert via feature gate:
+# --feature-gates=-processor.filter.defaultErrorModeIgnore
+# --feature-gates=-processor.transform.defaultErrorModeIgnore</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">cumulativetodelta Processor</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">Default <code class="code-inline">max_staleness</code> changed from <code class="code-inline">0</code> (infinite) to <code class="code-inline">1h</code> in 0.142 to prevent unbounded memory growth.</p>
+            <pre class="code-block">processors:
+  cumulativetodelta:
+    # Explicitly set to restore infinite retention:
+    max_staleness: 0
+
+    # New default if not set:
+    # max_staleness: 1h</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">tail_sampling Processor</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">The <code class="code-inline">disableinvertdecisions</code> gate was stabilized in 0.152. Invert decisions are permanently disabled. Migrate to drop policies.</p>
+            <pre class="code-block"># OLD (no longer works after 0.144/0.152):
+#   invert_match: true  on any policy
+
+# NEW: use a dedicated drop policy instead.
+# See tail_sampling processor docs for drop policy syntax.
+
+# Remove this flag:
+# --feature-gates=processor.tailsamplingprocessor.disableinvertdecisions</pre>
+          </div>
+        </div>
+
+        <!-- batch telemetry level (0.122) -->
+        <div class="card">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">Batch Processor Telemetry — level: normal Required (0.122)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3">Batch processor metrics are no longer emitted at <code>level: basic</code> telemetry verbosity. Switch to <code>level: normal</code> to keep seeing batch processor metrics.</div>
+            <pre class="code-block"># BEFORE — batch metrics visible at basic (pre-0.122):
+service:
+  telemetry:
+    metrics:
+      level: basic
+
+# AFTER — switch to normal to restore batch metrics:
+service:
+  telemetry:
+    metrics:
+      level: normal   # default if not specified</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">resource_detection Processor</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># REMOVED in 0.142:
+processors:
+  resourcedetection:
+    attributes: [cloud.region]  # REMOVED
+
+# Feature gates removed (now always on):
+# processor.resourcedetection.propagateerrors
+# processor.resourcedetection.removeGCPFaasID
+
+# Cloud platform value changes (0.147):
+#   cloud.platform: azure_eks  →  azure.eks
+#   cloud.platform: azure_vm   →  azure.vm
+
+# GCP FaaS attribute replaced:
+#   faas.id  →  faas.instance</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">k8s_attributes Processor</span>
+            <span class="pill badge-p3">P3 Advisory</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># New gates (alpha, opt-in, 0.146):
+# processor.k8sattributes.EmitV1K8sConventions
+#   → enables k8s.&lt;type&gt;.label.&lt;name&gt; (singular)
+# processor.k8sattributes.DontEmitV0K8sConventions
+#   → disables k8s.&lt;type&gt;.labels.&lt;name&gt; (plural)
+
+# allowLabelsAnnotationsSingular gate (0.135) deprecated in 0.146
+# in favor of the above new gates.
+
+# otelcol.k8s.pod.association metric DISABLED by default (0.151):
+# Disabled until pod_identifier attribute is correctly calculated.
+# No config change required.
+
+# Renamed (alias still works):
+processors:
+  k8s_attributes: {}   # was: k8sattributes</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div x-show="active === 'receivers'" x-transition>
+      <h2 class="text-lg font-semibold text-white mb-3">Receiver Changes</h2>
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <span class="pill badge-p3">P3 Advisory</span><span class="text-xs text-neutral-400 mr-3">no config change needed</span>
+        <span class="pill badge-p2">P2 Degrading</span><span class="text-xs text-neutral-400 mr-3">config / planning required</span>
+        <span class="pill badge-p1">P1 Breaking</span><span class="text-xs text-neutral-400">startup failure or silent data loss</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">sqlserver Receiver — Event Flag Renames (0.128)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">The flags for enabling top query and query sample collection were renamed. Old names cause a startup failure.</p>
+            <pre class="code-block"># Before 0.128 (removed):
+receivers:
+  sqlserver:
+    top_query_collection:
+      enabled: true
+    query_sample_collection:
+      enabled: true
+
+# After 0.128:
+receivers:
+  sqlserver:
+    events:
+      "db.server.top_query":
+        enabled: true
+      "db.server.query_sample":
+        enabled: true</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">postgresql Receiver — Query Collection Flags Removed (0.132)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout-warning border rounded-lg p-3 mb-3">
+              <p class="text-sm text-yellow-300">These flags were removed. Both query sample and top query collection are now <strong>enabled by default</strong>. This may increase data volume.</p>
+            </div>
+            <pre class="code-block"># REMOVED in 0.132:
+receivers:
+  postgresql:
+    query_sample_collection:
+      enabled: true/false   # REMOVED — always enabled now
+    top_query_collection:
+      enabled: true/false   # REMOVED — always enabled now</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-yellow-400 uppercase tracking-wide">⚠ kubelet_stats — No-Op Config Sections (0.136)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout-warning border rounded-lg p-3 mb-3">
+              <p class="text-sm text-yellow-300">If your kubeletstats config has explicit <code class="code-inline">enabled: false</code> for metrics already disabled by default, the collector will fail to start after upgrading to 0.136+.</p>
+            </div>
+            <pre class="code-block"># Example that now causes startup failure:
+receivers:
+  kubeletstats:
+    metrics:
+      k8s.node.cpu.utilization:
+        enabled: false   # already the default — REMOVE this
+      k8s.pod.cpu.utilization:
+        enabled: false   # already the default — REMOVE this
+# ACTION: Remove any explicit 'enabled: false' sections
+# for metrics already disabled by default.</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">kafka Receiver (0.141/0.147)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># Removed in 0.141/0.147:
+receivers:
+  kafka:
+    topic: my-topic        # REMOVED — use topics: [list]
+    exclude_topic: bad     # REMOVED — use exclude_topics: [list]
+    default_fetch_size: …  # REMOVED (Sarama-only)
+
+# Correct form:
+receivers:
+  kafka:
+    topics: [my-topic]
+    exclude_topics: [bad]</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">mysql / postgresql Receivers (0.148)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># mysql: query_sample now off by default — re-enable if needed.
+
+# postgresql: top_query and query_sample off by default.
+receivers:
+  postgresql:
+    top_queries:
+      enabled: true
+    query_sample:
+      enabled: true</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">prometheus Receiver</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <p class="text-xs font-semibold text-red-400 mb-2">Removed config options:</p>
+            <pre class="code-block"># Removed in 0.143:
+  use_start_time_metric: true          # REMOVED
+  start_time_metric_regex: ".*_start"  # REMOVED
+  # Use the metricstarttime processor instead
+
+# Removed in 0.149:
+  report_extra_scrape_metrics: true    # REMOVED
+
+# Feature gates removed in 0.151 (remove from startup):
+# receiver.prometheusreceiver.EnableNativeHistograms
+# receiver.prometheusreceiver.RemoveStartTimeAdjustment
+# receiver.prometheusreceiver.UseCreatedMetric
+# receiver.prometheusreceiver.RemoveLegacyResourceAttributes
+# receiver.prometheusreceiver.RemoveReportExtraScrapeMetricsConfig</pre>
+          </div>
+        </div>
+
+        <!-- prometheus metric name dots (0.120) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">prometheus Receiver — Metric Name Dots (0.120)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3">Prometheus 3.0 (adopted in 0.120) no longer escapes dots in metric names. Internal metrics using underscores now use dots. Dashboard queries and alert rules using the old names will break.</div>
+            <pre class="code-block"># Key renames (0.120+):
+# processor_filter_datapoints_filtered
+#   → processor_filter_datapoints.filtered
+# deltatocumulative_streams_tracked
+#   → deltatocumulative.streams.tracked
+# deltatocumulative_datapoints_processed
+#   → deltatocumulative.datapoints.processed
+
+# Resource attribute renames (self-monitoring):
+# service_name         → service.name
+# service_instance_id  → service.instance.id
+# service_version      → service.version
+
+# Action: update all dashboards, alert rules, and
+# OTTL conditions referencing the old underscore names.</pre>
+          </div>
+        </div>
+
+        <!-- activedirectoryds typo (0.120) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">activedirectoryds Receiver — Attribute Typo Fixed (0.120)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3">A typo was fixed: <code>distingushed_names</code> → <code>distinguished_names</code>. OTTL rules and dashboards using the old misspelled name will silently stop matching.</div>
+            <pre class="code-block"># Search all configs and dashboards for:
+# OLD: attributes["distingushed_names"]
+# NEW: attributes["distinguished_names"]
+#         ↑ 'i' added to 'distinguished'</pre>
+          </div>
+        </div>
+
+        <!-- sqlserver db.lock_timeout unit (0.124) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">sqlserver Receiver — db.lock_timeout Unit (0.124)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3"><code>db.lock_timeout</code> attribute unit changed from milliseconds to seconds in 0.124. Alert thresholds will be off by 1000x after upgrade.</div>
+            <pre class="code-block"># No config change required.
+# Action: divide all db.lock_timeout alert thresholds
+# and dashboard values by 1000 after upgrading.
+# Example: old "5000" (5s in ms) → new "5" (5s)</pre>
+          </div>
+        </div>
+
+        <!-- sqlserver attributes to resource (0.125) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">sqlserver Receiver — Attributes to Resource (0.125)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3">Three attributes moved from log record attributes to resource attributes. Log parsers and dashboards reading from log attributes will stop working.</div>
+            <pre class="code-block"># Deprecated log attributes → resource attributes:
+# attributes["computer_name"]
+#   → resource.attributes["sqlserver.computer.name"]
+# attributes["instance_name"]
+#   → resource.attributes["sqlserver.instance.name"]
+# attributes["host.name"]
+#   → resource.attributes["host.name"]</pre>
+          </div>
+        </div>
+
+        <!-- kubeletstats cpu utilization (0.125) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">kubeletstats — CPU Utilization → CPU Usage (0.125)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3">CPU utilization metrics deprecated in favor of CPU usage. Gate to beta in 0.125, stable in 0.130. Old metrics off by default in 0.130+.</div>
+            <pre class="code-block"># Deprecated → replacement:
+# container.cpu.utilization → container.cpu.usage
+# k8s.pod.cpu.utilization   → k8s.pod.cpu.usage
+# k8s.node.cpu.utilization  → k8s.node.cpu.usage
+
+# To keep deprecated metrics during transition:
+receivers:
+  kubelet_stats:
+    metrics:
+      container.cpu.utilization:
+        enabled: true   # re-enable during migration
+# WARNING: -receiver.kubeletstats.enableCPUUsageMetrics flag FAILS collector startup from 0.130+</pre>
+          </div>
+        </div>
+
+        <!-- P2-18: prometheus receiver legacy resource attributes renamed (0.126) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">prometheus Receiver — Legacy Resource Attributes Renamed (0.126)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-danger mb-3"><strong>Silent dashboard/alert breakage.</strong> The <code>RemoveLegacyResourceAttributes</code> gate became beta (enabled by default) in 0.126. Resource attributes on all prometheus-scraped metrics are renamed: <code>net.host.name</code> → <code>server.address</code>, <code>net.host.port</code> → <code>server.port</code>, <code>http.scheme</code> → <code>url.scheme</code>. Gate became STABLE in 0.129 — permanent from 0.129+.</div>
+            <pre class="code-block"># Temporary rollback (0.126–0.128 ONLY — gate stable/locked from 0.129+):
+# --feature-gates=-receiver.prometheusreceiver.RemoveLegacyResourceAttributes
+
+# Required: update dashboards and alerts to use new attribute names:
+# net.host.name  →  server.address
+# net.host.port  →  server.port
+# http.scheme    →  url.scheme</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">sqlserver Receiver — Event Name Changes (0.126)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">Event names and properties changed. OTTL rules, dashboards, or downstream processing referencing old names will break.</p>
+            <pre class="code-block"># Event name changes:
+# "top query"    →  "db.server.top_query"
+# "query sample" →  "db.server.query_sample"
+
+# Attribute rename in query sample events:
+# sqlserver.username  →  user.name
+
+# Query sample body removed; data is now in attributes.</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">prometheus Receiver — Start Time No Longer Adjusted (0.140+)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">From 0.140 onwards, the prometheus receiver no longer adjusts start times using <code class="code-inline">process_start_time_seconds</code>. Use the <code class="code-inline">metricstarttime</code> processor instead.</p>
+            <pre class="code-block"># Replacement for start time adjustment:
+processors:
+  metricstarttime: {}
+
+# Feature gates permanently removed (no longer exists in 0.151):
+# receiver.prometheusreceiver.RemoveStartTimeAdjustment
+# receiver.prometheusreceiver.UseCreatedMetric
+# receiver.prometheusreceiver.EnableNativeHistograms
+# receiver.prometheusreceiver.RemoveLegacyResourceAttributes</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">mongodb Receiver (0.147)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># Schema change — single resource per server now:
+# BEFORE: each database = separate resource
+# AFTER:  single resource per MongoDB server
+
+# 'database' resource attribute REMOVED.
+# Database is now a metric-level attr: db.namespace
+
+# Added: service.instance.id resource attribute
+# (UUID v5 derived from host:port)</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">windows_event_log Receiver (0.148)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm font-semibold text-neutral-300 mb-2">event_data format change:</p>
+            <pre class="code-block"># Before 0.148:
+# body["event_data"] = [{"ProcessId": "1234"}]
+
+# After 0.148+:
+# body["event_data"]["ProcessId"] = "1234"
+
+# To restore previous array format:
+receivers:
+  windows_event_log:
+    event_data_format: array</pre>
+            <p class="text-sm font-semibold text-neutral-300 mt-3 mb-2">New body keys also added (0.148):</p>
+            <pre class="code-block"># RenderingInfo is now also emitted as:
+# body["rendering_info"]["culture"]
+# body["rendering_info"]["channel"]
+# body["rendering_info"]["provider"]
+# body["rendering_info"]["message"]
+
+# UserData (alternative to EventData) now emitted as:
+# body["user_data"][...] (parsed key-value map)
+
+# These are NEW keys — not previously present.
+# Update any OTTL/filter rules that inspect the log body.</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">http_check Receiver — Nanoseconds (0.153)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout-warning border rounded-lg p-3 mb-3">
+              <p class="text-xs text-yellow-300">Timing metrics unit changed: milliseconds → nanoseconds. A 500µs event that previously showed 0ms now shows 500,000ns.</p>
+            </div>
+            <pre class="code-block"># Affected metrics (update dashboard thresholds):
+# httpcheck.dns.lookup.duration
+# httpcheck.client.connection.duration
+# httpcheck.tls.handshake.duration
+# httpcheck.client.request.duration
+# httpcheck.response.duration
+
+# Old: 500µs = 0 (truncated to 0ms)
+# New: 500µs = 500,000 (nanoseconds)
+# Old: 1.5ms = 1 (ms)
+# New: 1.5ms = 1,500,000 (ns)</pre>
+          </div>
+        </div>
+
+        <!-- k8sobjects API check (0.125) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">k8sobjects Receiver — API Check Moved (0.125)</span>
+            <span class="pill badge-p3">P3 Advisory</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300">K8s API object existence check moved from config validation to receiver startup. <code>otelcol validate</code> no longer catches missing K8s API objects — test with a live cluster instead. No config change required.</p>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">kubelet_stats Receiver (0.150)</span>
+            <span class="pill badge-p3">P3 Advisory</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">Deprecated resource attributes now disabled by default:</p>
+            <pre class="code-block"># Disabled by default in 0.150+:
+#   aws.volume.id
+#   fs.type
+#   gce.pd.name
+#   glusterfs.endpoints.name
+#   glusterfs.path
+#   partition
+# Re-enable explicitly in config if still needed.</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">jaeger Receiver</span>
+            <span class="pill badge-p3">P3 Advisory</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># DisableRemoteSampling stabilized 0.151,
+# gate removed in 0.153. Remote sampling is
+# now always disabled.
+
+# Remove this flag if present:
+# --feature-gates=receiver.jaeger.DisableRemoteSampling</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ EXPORTERS ═══════════════ -->
+    <div x-show="active === 'exporters'" x-transition>
+      <h2 class="text-lg font-semibold text-white mb-3">Exporter Changes</h2>
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <span class="pill badge-p3">P3 Advisory</span><span class="text-xs text-neutral-400 mr-3">no config change needed</span>
+        <span class="pill badge-p2">P2 Degrading</span><span class="text-xs text-neutral-400 mr-3">config / planning required</span>
+        <span class="pill badge-p1">P1 Breaking</span><span class="text-xs text-neutral-400">startup failure or silent data loss</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">signalfx Exporter — translation_rules Removed (0.121)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-danger mb-3">The <code>translation_rules</code> option was removed from the signalfx exporter in 0.121. Collector fails to start if present. Replace with a <code>transform</code> processor.</div>
+            <pre class="code-block"># BEFORE — causes startup failure in 0.121+:
+exporters:
+  signalfx:
+    access_token: "..."
+    translation_rules:        # REMOVE this block
+      - action: rename_metrics
+        mapping:
+          old_metric: new_metric
+
+# AFTER — use transform processor:
+processors:
+  transform:
+    metric_statements:
+      - context: metric
+        statements:
+          - set(name, "new_metric") where name == "old_metric"
+exporters:
+  signalfx:
+    access_token: "..."</pre>
+          </div>
+        </div>
+
+        <!-- P1-20: sending_queue::blocking removed (0.129) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">sending_queue::blocking Field Removed (0.129)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-danger mb-3">The <code>blocking</code> field inside <code>sending_queue:</code> was deprecated in 0.123 and removed in 0.129. Collector fails to start if present. Use <code>block_on_overflow</code> instead.</div>
+            <pre class="code-block"># BEFORE — startup failure in 0.129+:
+exporters:
+  otlp:
+    sending_queue:
+      blocking: true   # removed
+
+# AFTER:
+exporters:
+  otlp:
+    sending_queue:
+      block_on_overflow: true</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">OTLP Exporter — Deprecated Batcher Removed (0.130)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">The deprecated top-level <code class="code-inline">batcher</code> config block was removed from the OTLP exporter. Use <code class="code-inline">sending_queue::batch</code> instead.</p>
+            <pre class="code-block"># Before 0.130 (removed):
+exporters:
+  otlp:
+    batcher:
+      enabled: true
+      min_size_items: 100
+
+# After 0.130:
+exporters:
+  otlp:
+    sending_queue:
+      batch:
+        min_size: 100
+        flush_timeout: 200ms</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">sapm Exporter — Removed (0.147)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># BEFORE — sapm exporter (permanently removed):
+exporters:
+  sapm:
+    endpoint: https://ingest.us0.signalfx.com/v2/trace
+    access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+
+# AFTER — migrate to otlphttp:
+exporters:
+  otlphttp:
+    endpoint: https://ingest.us0.signalfx.com/v2/trace/otlp
+    headers:
+      X-SF-Token: "${env:SPLUNK_ACCESS_TOKEN}"</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">kafka Exporter — Top-Level Fields Removed (0.148)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># REMOVED (deprecated since 0.124, removed 0.148):
+exporters:
+  kafka:
+    topic: my-topic      # REMOVED
+    encoding: otlp_proto # REMOVED
+
+# REQUIRED new form — per-signal fields:
+exporters:
+  kafka:
+    logs:
+      topic: logs-topic
+      encoding: otlp_proto
+    metrics:
+      topic: metrics-topic
+      encoding: otlp_proto
+    traces:
+      topic: traces-topic
+      encoding: otlp_proto</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">splunk_hec Exporter — batcher Removed (0.151)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># BEFORE (removed in 0.151):
+exporters:
+  splunk_hec:
+    batcher:
+      enabled: true
+      min_size_items: 100
+
+# AFTER — migrate to sending_queue::batch:
+exporters:
+  splunk_hec:
+    sending_queue:
+      batch:
+        min_size_items: 100</pre>
+          </div>
+        </div>
+
+        <!-- awss3 s3_partition removed (0.121) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">awss3 Exporter — s3_partition Removed (0.121)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3"><code>s3_partition</code> was replaced by <code>s3_partition_format</code> in 0.121. Old key causes a startup error.</div>
+            <pre class="code-block"># BEFORE — removed in 0.121:
+exporters:
+  awss3:
+    s3uploader:
+      s3_partition: minute    # REMOVED
+
+# AFTER — equivalent strftime format:
+exporters:
+  awss3:
+    s3uploader:
+      s3_partition_format: "year=%Y/month=%m/day=%d/hour=%H/minute=%M"
+# s3_partition: hour → "year=%Y/month=%m/day=%d/hour=%H"</pre>
+          </div>
+        </div>
+
+        <!-- prometheusremotewrite export_created_metric removed (0.123) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">prometheusremotewrite — export_created_metric Removed (0.123)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3"><code>export_created_metric</code> was removed in 0.123. Collector fails to start if present.</div>
+            <pre class="code-block"># BEFORE — startup failure in 0.123+:
+exporters:
+  prometheusremotewrite:
+    endpoint: https://prometheus.example.com/api/v1/write
+    export_created_metric: true    # REMOVE
+
+# AFTER:
+exporters:
+  prometheusremotewrite:
+    endpoint: https://prometheus.example.com/api/v1/write</pre>
+          </div>
+        </div>
+
+        <!-- P2-34: kafka exporter + kafkametrics client_id changes (0.123) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">kafka Exporter + kafkametrics Receiver — Client ID Changes (0.123)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-danger mb-3"><strong>Silent data loss risk (0.123).</strong> The default <code>client_id</code> for <code>kafkaexporter</code> and <code>kafkametricsreceiver</code> changed from <code>"sarama"</code> to <code>"otel-collector"</code>. Kafka ACLs based on <code>client.id = "sarama"</code> will silently break. Also: <code>auth.plain_text</code> deprecated (use <code>auth.sasl</code> with PLAIN); <code>refresh_frequency</code> deprecated (use <code>metadata.refresh_interval</code>).</div>
+            <pre class="code-block"># Pin client_id to preserve ACL compatibility:
+exporters:
+  kafka:
+    client_id: sarama
+
+receivers:
+  kafkametrics:
+    client_id: sarama
+    metadata:
+      refresh_interval: 30s   # was refresh_frequency: 30s</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">prometheusremotewrite Exporter (0.142)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># Updated to Remote Write 2.0 rc.4.
+# Requires Prometheus 3.8.0+ as receiving endpoint.
+# Upgrade Prometheus before upgrading the collector
+# if exporting to a Prometheus server.
+
+# Feature gate removed in 0.151 — remove if set:
+# pkg.translator.prometheus.NormalizeName</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">signalfx Exporter — URL Change (0.151)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout-warning border rounded-lg p-3 mb-3">
+              <p class="text-xs text-yellow-300">Default endpoint domain changed. Update firewall allowlists.</p>
+            </div>
+            <pre class="code-block"># Before 0.151 (realm: us0):
+# api_url: https://api.us0.signalfx.com
+# ingest_url: https://ingest.us0.signalfx.com
+
+# After 0.151:
+# api_url: https://api.us0.observability.splunkcloud.com
+# ingest_url: https://ingest.us0.observability.splunkcloud.com
+
+# Explicit api_url / ingest_url settings are unchanged.
+# ACTION: Add *.observability.splunkcloud.com to allowlists</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">clickhouse Exporter (0.153)</span>
+            <span class="pill badge-p3">P3 Advisory</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># Feature gate removed — set in config instead:
+
+# Remove from startup:
+# --feature-gates=+clickhouse.json
+
+# Set directly in config:
+exporters:
+  clickhouse:
+    json: true</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ OTTL ═══════════════ -->
+    <div x-show="active === 'ottl'" x-transition>
+      <h2 class="text-lg font-semibold text-white mb-4">OTTL (OpenTelemetry Transformation Language) Changes</h2>
+      <div class="callout-warning border rounded-lg p-4 mb-4">
+        <p class="font-semibold text-yellow-400 mb-1">⚠ Silent failures now surface as errors</p>
+        <p class="text-sm text-neutral-300">OTTL statements that were previously silently failing due to type mismatches will now return errors. Review all transform/filter OTTL configurations and test in staging.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <span class="pill badge-p3">P3 Advisory</span><span class="text-xs text-neutral-400 mr-3">no config change needed</span>
+        <span class="pill badge-p2">P2 Degrading</span><span class="text-xs text-neutral-400 mr-3">config / planning required</span>
+        <span class="pill badge-p1">P1 Breaking</span><span class="text-xs text-neutral-400">startup failure or silent data loss</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">SetMap Error Handling (0.150)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3"><code class="code-inline">SetMap</code> now returns an error for invalid value types instead of silently ignoring them. Slice setters also use stricter type handling.</p>
+            <pre class="code-block"># Review all set() calls on map or slice fields
+# in your transform/filter pipelines.
+# Statements that were previously no-ops may now
+# produce errors that propagate or get ignored
+# depending on your error_mode setting.</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">Type-Strict Setters (0.150 + 0.153)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">OTTL context setters now validate expected types and return errors on mismatch. Previously these silently no-opped.</p>
+            <pre class="code-block"># Now returns an error (was silently ignored):
+# Setting histogram path on a NumberDataPoint:
+set(explicit_bounds, [1.0])    # only valid on HistogramDataPoint
+set(bucket_counts, [1, 2, 3])  # only valid on HistogramDataPoint
+
+# Valid paths by data point type:
+# NumberDataPoint:
+#   value_double, value_int, exemplars
+# HistogramDataPoint:
+#   explicit_bounds, bucket_counts, count, sum
+# ExponentialHistogramDataPoint:
+#   scale, zero_count, positive.*, negative.*
+# SummaryDataPoint:
+#   quantile_values, count, sum</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden md:col-span-2">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">New OTTL Functions Available Since 0.126</span>
+            <span class="pill badge-p3">P3 Advisory</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># Coalesce (0.150): first non-nil value from list
+set(attributes["user"],
+  Coalesce([attributes["user.id"], attributes["enduser.id"], "unknown"]))
+
+# Base64Encode (0.146)
+set(attributes["encoded"], Base64Encode(body))
+
+# IsInCIDR (0.146): check if IP in CIDR range
+where IsInCIDR(attributes["client.ip"], "10.0.0.0/8")
+
+# Bool (0.143): convert to boolean
+set(attributes["flag"], Bool(attributes["flag_str"]))
+
+# delete_index: remove item from array (0.145)
+delete_index(attributes["items"], 0)
+
+# TrimPrefix / TrimSuffix (0.139)
+set(name, TrimPrefix(name, "prefix_"))</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">truncate_all — UTF-8 Safe by Default (0.148)</span>
+            <span class="pill badge-p3">P3 Advisory</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3"><code class="code-inline">truncate_all</code> now defaults to UTF-8-safe truncation. Results may be slightly shorter than the limit to avoid splitting multi-byte characters.</p>
+            <pre class="code-block"># New default (utf8_safe: true):
+truncate_all(attributes, 100)
+# → may produce strings shorter than 100 bytes
+
+# To restore old byte-level truncation:
+truncate_all(attributes, 100, false)
+#   third argument: utf8_safe = false</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ SPLUNK ═══════════════ -->
+    <div x-show="active === 'splunk'" x-transition>
+      <h2 class="text-lg font-semibold text-white mb-3">Splunk-Specific Changes</h2>
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <span class="pill badge-p3">P3 Advisory</span><span class="text-xs text-neutral-400 mr-3">no config change needed</span>
+        <span class="pill badge-p2">P2 Degrading</span><span class="text-xs text-neutral-400 mr-3">config / planning required</span>
+        <span class="pill badge-p1">P1 Breaking</span><span class="text-xs text-neutral-400">startup failure or silent data loss</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+
+        <!-- routing connector match_once removed (0.120) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">routing Connector — match_once Removed (0.120)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-danger mb-3"><code>match_once</code> was removed from the routing connector in 0.120. Startup failure if present in a routing connector config.</div>
+            <pre class="code-block"># BEFORE — startup failure in 0.120+:
+connectors:
+  routing:
+    match_once: true    # REMOVE this field
+    table:
+      - condition: attributes["env"] == "prod"
+        pipelines: [traces/prod]
+
+# AFTER:
+connectors:
+  routing:
+    table:
+      - condition: attributes["env"] == "prod"
+        pipelines: [traces/prod]
+    default_pipelines: [traces/default]</pre>
+          </div>
+        </div>
+
+        <!-- service::telemetry::address silently ignored (0.123) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">service::telemetry::address — Must Migrate to readers: Format (0.123)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-danger mb-3">The legacy flat <code>service: telemetry: address:</code> field is silently ignored in 0.123+ — collector starts but emits <strong>no internal telemetry metrics</strong>. The <code>telemetry.disableAddressFieldForInternalTelemetry</code> gate became STABLE in 0.128 — the <code>--feature-gates=-telemetry.disableAddressFieldForInternalTelemetry</code> rollback flag <strong>FAILS collector startup from 0.128+</strong>. Migrate the config.</div>
+            <pre class="code-block"># BEFORE — silently ignored in 0.123+:
+service:
+  telemetry:
+    address: 0.0.0.0:8888   # IGNORED
+
+# AFTER — use full readers format (official migration per 0.123 release notes):
+service:
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+                without_scope_info: true
+                without_type_suffix: true
+                without_units: true
+
+# SIMPLER ALTERNATIVE (metrics::address is also accepted but itself deprecated):
+# service:
+#   telemetry:
+#     metrics:
+#       address: 0.0.0.0:8888</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">access_token_passthrough Removed (0.137)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout-danger border border-red-700 bg-red-950 rounded-lg p-3 mb-3">
+              <p class="text-sm text-red-300">The <code class="code-inline">access_token_passthrough</code> field was removed in 0.137 from the <code class="code-inline">signalfx</code> receiver, <code class="code-inline">signalfx</code> exporter, and <code class="code-inline">splunk_hec</code> exporter. The collector will <strong>fail to start</strong> if this field is present anywhere in your config.</p>
+            </div>
+            <p class="text-sm text-neutral-300 mb-3"><strong>Action:</strong> Remove all occurrences of <code class="code-inline">access_token_passthrough:</code> from every receiver and exporter block. Use <code class="code-inline">headers_setter</code> extension or inline <code class="code-inline">headers:</code> on the exporter for token propagation.</p>
+            <pre class="code-block"># BEFORE — causes startup failure in 0.137+:
+receivers:
+  signalfx:
+    endpoint: 0.0.0.0:9943
+    access_token_passthrough: true    # REMOVE
+
+exporters:
+  signalfx:
+    access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+    access_token_passthrough: true    # REMOVE
+
+  splunk_hec:
+    token: "${env:SPLUNK_HEC_TOKEN}"
+    access_token_passthrough: true    # REMOVE
+
+# AFTER — field removed entirely:
+receivers:
+  signalfx:
+    endpoint: 0.0.0.0:9943
+
+exporters:
+  signalfx:
+    access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+
+  splunk_hec:
+    token: "${env:SPLUNK_HEC_TOKEN}"</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">FluentD Fully Removed (0.144–0.145)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4">
+            <div class="callout-danger border rounded-lg p-3 mb-3">
+              <p class="text-xs text-red-300">FluentD is permanently removed from all Splunk installers.</p>
+            </div>
+            <pre class="code-block"># Removed from:
+# - MSI (Windows)        0.144
+# - Chocolatey           0.144
+# - Standard installer   0.144
+# - PowerShell script    0.145
+# - RPM / DEB packages   0.145
+
+# REPLACEMENT: use the filelog / file_log receiver
+receivers:
+  file_log:
+    include: [/var/log/myapp/*.log]
+    operators:
+      - type: json_parser</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">signalfx Receiver Deprecated (0.146) → Removed (0.153)</span>
+            <span class="pill badge-p1">P1 Breaking</span>
+          </div>
+          <div class="p-4 space-y-3">
+            <div class="callout-danger">
+              <strong>Breaking:</strong> The <code class="code-inline">signalfx</code> receiver has been permanently removed from the Splunk distribution in v0.153.0. If your config still uses it, the collector will fail to start.
+            </div>
+            <p class="text-sm text-neutral-300">
+              <strong>Timeline:</strong> Formally deprecated in v0.146.0 (upstream OTel Contrib, 2026-02-13 via PR #46079). Removed from the Splunk distribution in v0.153.0 (PR #7560). Migrate to the <code class="code-inline">otlp</code> receiver on both <code class="code-inline">metrics</code> and <code class="code-inline">logs</code> pipelines.
+            </p>
+            <pre class="code-block"># BEFORE — signalfx receiver (REMOVED in 0.153):
+receivers:
+  signalfx:
+    endpoint: 0.0.0.0:9943
+    include_metadata: true
+
+service:
+  pipelines:
+    metrics:
+      receivers: [signalfx]
+    logs:
+      receivers: [signalfx]
+
+# AFTER — use the OTLP receiver instead:
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+    logs:
+      receivers: [otlp]</pre>
+            <p class="text-xs text-neutral-400">
+              Sending agents must also be updated to emit OTLP instead of SignalFx protocol. The Splunk OTel agent and most supported SDKs already support OTLP natively.
+            </p>
+          </div>
+        </div>
+
+        <!-- confighttp null fields (0.121) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">confighttp HTTP Client null Fields (0.121)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3">HTTP client options <code>max_idle_conns</code>, <code>max_idle_conns_per_host</code>, <code>max_conns_per_host</code>, and <code>idle_conn_timeout</code> changed from nullable to integer. Setting to <code>null</code> causes a YAML parse error.</div>
+            <pre class="code-block"># BEFORE — null caused parse error in 0.121+:
+exporters:
+  otlphttp:
+    http_client_config:
+      max_idle_conns: null   # INVALID
+
+# AFTER — use 0 for unlimited, or omit:
+exporters:
+  otlphttp:
+    http_client_config:
+      max_idle_conns: 0      # 0 = unlimited</pre>
+          </div>
+        </div>
+
+        <!-- splunkenterprise metrics opt-in (0.124) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">splunkenterprise Receiver — Metrics Now Opt-In (0.124)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3">All <code>splunkenterprise</code> receiver metrics are disabled by default in 0.124 except <code>splunk.health</code>. Previously collected metrics will silently disappear after upgrade.</div>
+            <pre class="code-block"># Re-enable each metric explicitly:
+receivers:
+  splunkenterprise:
+    endpoint: https://splunk:8089
+    metrics:
+      splunk.data.indexes.extended.bucket.count:
+        enabled: true
+      splunk.index.size.extended:
+        enabled: true
+      splunk.license.index.usage:
+        enabled: true
+      # Add each metric — only splunk.health on by default</pre>
+          </div>
+        </div>
+
+        <!-- kafka auth::tls deprecated (0.124) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">Kafka auth::tls Deprecated → Top-Level tls (0.124)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3"><code>auth: tls:</code> nested path in Kafka components is deprecated in 0.124. Migrate to top-level <code>tls:</code> to avoid a future startup failure.</div>
+            <pre class="code-block"># BEFORE — deprecated path:
+receivers:
+  kafka:
+    auth:
+      tls:
+        ca_file: /etc/ssl/ca.pem
+
+# AFTER — top-level tls: block:
+receivers:
+  kafka:
+    tls:
+      ca_file: /etc/ssl/ca.pem</pre>
+          </div>
+        </div>
+
+        <!-- otelcol.component.kind lowercase (0.125) -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">otelcol.component.kind Values Now Lowercase (0.125)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout callout-warning mb-3"><code>otelcol.component.kind</code> attribute values changed from title case to lowercase in 0.125. OTTL conditions and dashboard queries using old capitalized values will stop matching.</div>
+            <pre class="code-block"># OLD (pre-0.125):
+# attributes["otelcol.component.kind"] == "Receiver"
+# attributes["otelcol.component.kind"] == "Exporter"
+
+# NEW (0.125+):
+# attributes["otelcol.component.kind"] == "receiver"
+# attributes["otelcol.component.kind"] == "exporter"</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-yellow-400 uppercase tracking-wide">⚠ IIS Application Pool Metrics Enabled by Default (0.131)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <div class="callout-warning border rounded-lg p-3 mb-3">
+              <p class="text-sm text-yellow-300">Windows IIS users: two metrics are now enabled by default. With many application pools this can significantly increase metric volume and billing.</p>
+            </div>
+            <pre class="code-block"># Now enabled by default: iis.application_pool.state
+#                         iis.application_pool.uptime
+
+# To disable:
+receivers:
+  iis:
+    metrics:
+      iis.application_pool.state:
+        enabled: false
+      iis.application_pool.uptime:
+        enabled: false</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">Windows MSI Download URL (0.151)</span>
+            <span class="pill badge-p2">P2 Degrading</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># OLD URL in installer scripts:
+# dl.signalfx.com
+
+# NEW URL:
+# dl.observability.splunkcloud.com
+
+# Update any automation scripts, pipelines, or
+# IaC that references the old URL.</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">Config Debug Endpoint Removed (0.142)</span>
+            <span class="pill badge-p3">P3 Advisory</span>
+          </div>
+          <div class="p-4">
+            <p class="text-sm text-neutral-300 mb-3">The localhost config endpoint <code class="code-inline">http://localhost:55554/debug/configz</code> is removed. Use the <code class="code-inline">zpages</code> extension.</p>
+            <pre class="code-block"># Replacement via zpages extension:
+# http://localhost:55679/debug/expvarz
+
+# Get effective config (bash):
+curl http://localhost:55679/debug/expvarz --silent \
+  | jq -r '.["splunk.config.effective"]'
+
+# PowerShell:
+(Invoke-WebRequest http://localhost:55679/debug/expvarz).Content `
+  | ConvertFrom-Json `
+  | Select-Object -ExpandProperty "splunk.config.effective"</pre>
+          </div>
+        </div>
+        <div class="card overflow-hidden">
+          <div class="px-4 py-2 border-b border-neutral-700 flex items-center justify-between">
+            <span class="text-xs font-semibold text-neutral-400 uppercase tracking-wide">splunk_otlp_histograms Converter Removed (0.148)</span>
+            <span class="pill badge-p3">P3 Advisory</span>
+          </div>
+          <div class="p-4">
+            <pre class="code-block"># Add manually if still needed:
+processors:
+  resource:
+    attributes:
+      - key: splunk_otlp_histograms
+        value: "true"
+        action: upsert</pre>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="text-lg font-semibold text-white mb-3">Removed SmartAgent Monitors</h2>
+      <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr><th>Removed Monitor / Plugin</th><th>Recommended Replacement</th><th>Removed In</th></tr></thead>
+            <tbody>
+              <tr><td class="font-mono text-red-300">sapm exporter</td><td>otlphttp exporter</td><td>0.147</td></tr>
+              <tr><td class="font-mono text-red-300">sapm receiver</td><td>otlp receiver</td><td>0.135</td></tr>
+              <tr><td class="font-mono text-red-300">routingprocessor</td><td>routing connector</td><td>0.134</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/apache</td><td>Apache receiver</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/cpufreq</td><td>hostmetrics receiver</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/memory</td><td>hostmetrics receiver (memory scraper)</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/opcache</td><td>PHP SDK for OpenTelemetry</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/php-fpm</td><td>PHP SDK for OpenTelemetry</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/processes</td><td>hostmetrics receiver (process scraper)</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/systemd</td><td>systemd receiver</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/uptime</td><td>hostmetrics receiver (system scraper)</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/zookeeper</td><td>zookeeper receiver</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">smartagent/ntp</td><td>NTP receiver</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">smartagent/postgresql</td><td>postgresql receiver</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/protocols</td><td>hostmetrics receiver (network scraper)</td><td>0.149</td></tr>
+              <tr><td class="font-mono text-red-300">cadvisor</td><td>prometheus receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/chrony</td><td>chrony receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/couchbase</td><td>prometheus receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">haproxy plugin</td><td>haproxy receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">heroku plugin</td><td>resourcedetection processor (heroku)</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">kubelet-stats / kubelet-metrics</td><td>kubeletstats receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">mongodbatlas monitor</td><td>mongodbatlas receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">nagios</td><td>No replacement</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/nginx</td><td>nginx receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/rabbitmq</td><td>RabbitMQ receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/redis</td><td>Redis receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">windows-legacy</td><td>hostmetrics + windowsperfcounters receivers</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/spark</td><td>Apache Spark receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/activemq</td><td>jmxreceiver (target: activemq)</td><td>0.131</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/cassandra</td><td>jmxreceiver (target: cassandra)</td><td>0.131</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/hadoop</td><td>jmxreceiver (target: hadoop)</td><td>0.131</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/kafka (collectd)</td><td>jmxreceiver (target: kafka)</td><td>0.131</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/kafka-consumer</td><td>jmxreceiver (target: kafka)</td><td>0.131</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/kafka-producer</td><td>jmxreceiver (target: kafka)</td><td>0.131</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/solr</td><td>jmxreceiver (target: solr)</td><td>0.131</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/tomcat</td><td>jmxreceiver (target: tomcat)</td><td>0.131</td></tr>
+              <tr><td class="font-mono text-red-300">smartagent/jaeger-grpc</td><td>jaeger receiver (grpc protocol)</td><td>0.131</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/statsd / appmesh / statsd</td><td>statsd receiver</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">collectd/jenkins</td><td>Jenkins OpenTelemetry plugin</td><td>0.144</td></tr>
+              <tr><td class="font-mono text-red-300">FluentD (all installers)</td><td>filelog receiver</td><td>0.144–0.145</td></tr>
+              <tr><td class="font-mono text-red-300">ecs_task_observer extension</td><td>None (removed upstream)</td><td>0.140</td></tr>
+              <tr><td class="font-mono text-red-300">migratecheckpoint command</td><td>None (FluentD sidecar gone)</td><td>0.139</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ CHECKLIST ═══════════════ -->
+    <div x-show="active === 'checklist'" x-transition>
+      <h2 class="text-lg font-semibold text-white mb-2">Step-by-Step Upgrade Checklist</h2>
+      <p class="text-sm text-neutral-400 mb-6">Work through each group in order. Complete all items before moving to the next group.</p>
+
+      <div class="space-y-3 mb-8">
+
+        <details class="card overflow-hidden" open>
+          <summary class="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors">
+            <span class="chevron text-neutral-400 text-xs">▶</span>
+            <span class="font-semibold text-white text-sm">Before Upgrading — Review</span>
+          </summary>
+          <div class="px-4 pb-4 space-y-2 border-t border-neutral-700 pt-3">
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Back up your current collector configuration files</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Review all component names in your config against the Renames table</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Audit any FluentD / SmartAgent monitors in use — find replacements before upgrading</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check if you use kafka exporter or kafkametrics receiver — client_id default changed <code class="code-inline">sarama</code>→<code class="code-inline">otel-collector</code> in 0.123; verify Kafka broker ACLs</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check if you use kafka receiver (Sarama) — client_id config was broken before 0.130; default changes to otel-collector in 0.130; verify Kafka broker ACLs</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check Kafka components for <code class="code-inline">auth.plain_text</code> — deprecated in 0.123, migrate to <code class="code-inline">auth.sasl</code> with <code class="code-inline">mechanism: PLAIN</code></span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Search config for 'sapm' exporter or receiver usage — migrate to otlphttp</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check if routingprocessor is used — migrate to routing connector; <code class="code-inline">match_once</code> was removed in 0.120 — do NOT include it</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Verify any feature gates you have set explicitly — many have been promoted or removed</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check <code class="code-inline">service::telemetry::address</code> — must migrate to <code class="code-inline">readers:</code> format; gate STABLE in 0.128 — rollback flag FAILS startup from 0.128+</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check signalfx exporter for <code class="code-inline">translation_rules</code> — must migrate to transform processor</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check awss3 exporter for <code class="code-inline">s3_partition</code> — replace with <code class="code-inline">s3_partition_format</code> strftime string</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check prometheusremotewrite exporter for <code class="code-inline">export_created_metric</code> — remove if present</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check all exporters for <code class="code-inline">sending_queue::blocking</code> — replace with <code class="code-inline">block_on_overflow</code> (removed in 0.129, causes startup failure)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check transform processors for mixed Basic/Advanced config style — must use one or the other</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check k8sattributes <code class="code-inline">node_from_env_var</code> — referenced env var must always be set or remove the field</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check splunkenterprise receiver — all metrics now opt-in (except splunk.health); re-enable as needed</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Update dashboards for prometheus resource attribute renames: <code class="code-inline">net.host.name</code>→<code class="code-inline">server.address</code>, <code class="code-inline">net.host.port</code>→<code class="code-inline">server.port</code>, <code class="code-inline">http.scheme</code>→<code class="code-inline">url.scheme</code> (permanent from 0.129)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Update dashboards referencing internal metric names with dots vs underscores (Prometheus 3.0, 0.120)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer group"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove deprecated feature gates: <code class="code-inline">normalizeProcessCPUUtilization</code>, <code class="code-inline">k8sattr.rfc3339</code> (removed 0.120/0.123)</span></label>
+          </div>
+        </details>
+
+        <details class="card overflow-hidden" open>
+          <summary class="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors">
+            <span class="chevron text-neutral-400 text-xs">▶</span>
+            <span class="font-semibold text-white text-sm">Configuration File Updates</span>
+          </summary>
+          <div class="px-4 pb-4 space-y-2 border-t border-neutral-700 pt-3">
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Rename all legacy component names to snake_case (see Renames tab)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">default_fetch_size</code> from kafka receiver config (Sarama-only, removed 0.144)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove top-level <code class="code-inline">topic</code> and <code class="code-inline">encoding</code> from kafka exporter — use per-signal fields (removed 0.148)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">report_extra_scrape_metrics</code> from prometheus receiver config (removed 0.149)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">use_start_time_metric</code> and <code class="code-inline">start_time_metric_regex</code> from prometheus receiver (removed 0.143)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">attributes</code> field from resourcedetection processor config (removed 0.142)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">min_size_items</code>/<code class="code-inline">max_size_items</code> from sending_queue::batch config — use <code class="code-inline">min_size</code>/<code class="code-inline">max_size</code> (removed 0.123)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">export_created_metric</code> from prometheusremotewrite exporter (removed 0.123)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">translation_rules</code> from signalfx exporter — migrate to transform processor (removed 0.121)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Replace <code class="code-inline">s3_partition</code> in awss3 exporter with <code class="code-inline">s3_partition_format</code> strftime string (removed 0.121)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Replace <code class="code-inline">null</code> values with <code class="code-inline">0</code> in HTTP client max_idle_conns / idle_conn_timeout fields (0.121+)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">If using cumulativetodelta processor, add explicit <code class="code-inline">max_staleness: 0</code> if you need infinite retention</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">If using splunk_hec exporter with <code class="code-inline">batcher</code> key, migrate to <code class="code-inline">sending_queue::batch</code> (removed 0.151)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">If using windowseventlog and need old array format: set <code class="code-inline">event_data_format: array</code> (changed 0.148)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">If using mysql receiver: re-enable query_sample if needed (off by default since 0.148)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">If using postgresql receiver: re-enable top_query/query_sample if needed (off by default since 0.148)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">faas.id</code> references — replaced with <code class="code-inline">faas.instance</code> (resourcedetection, 0.147)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Azure resource detection: update <code class="code-inline">azure_eks</code> to <code class="code-inline">azure.eks</code> and <code class="code-inline">azure_vm</code> to <code class="code-inline">azure.vm</code> (0.147)</span></label>
+          </div>
+        </details>
+
+        <details class="card overflow-hidden">
+          <summary class="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors">
+            <span class="chevron text-neutral-400 text-xs">▶</span>
+            <span class="font-semibold text-white text-sm">Network / Infrastructure</span>
+          </summary>
+          <div class="px-4 pb-4 space-y-2 border-t border-neutral-700 pt-3">
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Update firewall/allowlists: SignalFx exporter default endpoints changed to <code class="code-inline">*.observability.splunkcloud.com</code> (0.151)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Update Windows MSI download URL from <code class="code-inline">dl.signalfx.com</code> to <code class="code-inline">dl.observability.splunkcloud.com</code> (0.151)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Verify Prometheus remote write endpoint is Prometheus 3.8.0+ — RW 2.0 rc.4 incompatible with older (0.142)</span></label>
+          </div>
+        </details>
+
+        <details class="card overflow-hidden">
+          <summary class="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors">
+            <span class="chevron text-neutral-400 text-xs">▶</span>
+            <span class="font-semibold text-white text-sm">Metrics &amp; Dashboards</span>
+          </summary>
+          <div class="px-4 pb-4 space-y-2 border-t border-neutral-700 pt-3">
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Update dashboard queries filtering on service_name/service_instance_id/service_version on individual metrics — now only in target_info (0.149)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Update httpcheck timing metrics dashboards — now in nanoseconds not milliseconds (0.153)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Update ECS memory metric unit filters using 'Megabytes' string — now 'MiB' (0.148)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">spanmetrics connector: <code class="code-inline">collector.instance.id</code> attribute now added to all metrics — check cardinality impact (0.152)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">OTel internal metric units changed to singular form: {request} not {requests} (0.148)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">MongoDB receiver: 'database' is no longer a resource attribute — now a metric-level 'db.namespace' (0.147)</span></label>
+          </div>
+        </details>
+
+        <details class="card overflow-hidden">
+          <summary class="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors">
+            <span class="chevron text-neutral-400 text-xs">▶</span>
+            <span class="font-semibold text-white text-sm">Processors — Behavior Changes</span>
+          </summary>
+          <div class="px-4 pb-4 space-y-2 border-t border-neutral-700 pt-3">
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">filter processor: default error_mode is now <code class="code-inline">ignore</code> (was <code class="code-inline">propagate</code>) — add <code class="code-inline">error_mode: propagate</code> to restore (0.153)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">transform processor: default error_mode is now <code class="code-inline">ignore</code> (was <code class="code-inline">propagate</code>) — add <code class="code-inline">error_mode: propagate</code> to restore (0.153)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">OTTL statements that were silently failing due to type mismatches will now surface errors — review all OTTL configs</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">tail_sampling: invert decisions are permanently disabled — migrate to drop policies (0.144/0.152)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">truncate_all OTTL function: now UTF-8 safe by default — set <code class="code-inline">utf8_safe: false</code> to restore old byte-level behavior (0.148)</span></label>
+          </div>
+        </details>
+
+        <details class="card overflow-hidden">
+          <summary class="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors">
+            <span class="chevron text-neutral-400 text-xs">▶</span>
+            <span class="font-semibold text-white text-sm">Feature Gate Removals</span>
+          </summary>
+          <div class="px-4 pb-4 space-y-2 border-t border-neutral-700 pt-3">
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">--feature-gates=exporter.kafkaexporter.UseFranzGo</code> (gate removed 0.144)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">--feature-gates=receiver.kafkareceiver.UseFranzGo</code> (gate removed 0.144)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">--feature-gates=processor.tailsamplingprocessor.disableinvertdecisions</code> (gate stabilized 0.152)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">--feature-gates=receiver.jaeger.DisableRemoteSampling</code> (gate removed 0.153)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">--feature-gates=pkg.translator.prometheus.NormalizeName</code> (gate removed 0.151)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">--feature-gates=processor.resourcedetection.removeGCPFaasID</code> (gate removed 0.147)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">--feature-gates=+clickhouse.json</code> (gate removed 0.153, use <code class="code-inline">json: true</code> in config instead)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">--feature-gates=receiver.hostmetrics.normalizeProcessCPUUtilization</code> (gate removed 0.120)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Remove <code class="code-inline">--feature-gates=processor.k8sattributes.k8sattr.rfc3339</code> (gate removed 0.123)</span></label>
+          </div>
+        </details>
+
+        <details class="card overflow-hidden">
+          <summary class="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors">
+            <span class="chevron text-neutral-400 text-xs">▶</span>
+            <span class="font-semibold text-white text-sm">Post-Upgrade Verification</span>
+          </summary>
+          <div class="px-4 pb-4 space-y-2 border-t border-neutral-700 pt-3">
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Run: <code class="code-inline">otelcol validate --config=/etc/otelcol/config.yaml</code> before deploying</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Verify all pipelines start without errors in the collector logs</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Confirm metrics are flowing to Splunk Observability / Splunk HEC</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Validate that component rename aliases are working (deprecation warnings expected — this is OK)</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Check OTTL transform/filter pipelines for newly surfaced errors from type mismatches</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Monitor for <code class="code-inline">collector.instance.id</code> attribute appearing in spanmetrics — update any cardinality limits</span></label>
+            <label class="flex gap-3 items-start cursor-pointer"><input type="checkbox" class="mt-0.5 accent-blue-500"><span class="text-sm text-neutral-300">Test any Kafka integrations end-to-end with the new Franz-go-only config</span></label>
+          </div>
+        </details>
+      </div>
+
+      <div class="card overflow-hidden">
+        <div class="px-4 py-2 border-b border-neutral-700 text-xs font-semibold text-neutral-400 uppercase tracking-wide">Validation Commands</div>
+        <div class="p-4">
+          <pre class="code-block"># Validate your config before upgrading:
+otelcol validate --config=/etc/otelcol/config.yaml
+
+# Check for deprecated component name warnings on startup:
+otelcol --config=/etc/otelcol/config.yaml 2>&amp;1 | grep -i "deprecated"
+
+# Linux: verify collector service health post-upgrade:
+systemctl status splunk-otel-collector
+
+# Windows: check service status (PowerShell):
+Get-Service -Name splunk-otel-collector | Select-Object Status, StartType
+
+# View effective config via zpages:
+curl http://localhost:55679/debug/expvarz | jq -r '.["splunk.config.effective"]'</pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Footer ── -->
+  <div class="border-t border-neutral-800 mt-12 py-4 text-center text-xs text-neutral-600">
+    Splunk OTel Collector Upgrade Guide — v0.126.0 to v0.153.0
+  </div>
+
+</body>
+</html>

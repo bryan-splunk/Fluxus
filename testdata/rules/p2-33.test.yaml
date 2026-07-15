@@ -1,0 +1,13 @@
+cases:
+  - name: "fires when sqlserver receiver present"
+    config: |
+      receivers:
+        sqlserver:
+          collection_interval: 10s
+    should_fire: true
+
+  - name: "silent when sqlserver absent"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false

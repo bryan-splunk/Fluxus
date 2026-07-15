@@ -1,0 +1,38 @@
+id: P2-20
+category: p2
+introduced: "0.120"
+title: "tail_sampling — Decision Timer Metric Unit Changed (microseconds → milliseconds)"
+look_for:
+  - path: $.processors.tail_sampling
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    - comment_path: $.processors.tail_sampling
+      comment_text: |
+        # UPGRADE(P2-20 v0.120): tail_sampling sampling decision timer metric unit changed μs → ms.
+        # processor_tail_sampling_sampling_decision_timer_firing_time values are now in milliseconds.
+        # ACTION: divide all alert thresholds referencing this metric by 1000.
+    # Before 0.120 — decision timer metric in microseconds:
+    # processor_tail_sampling_sampling_decision_timer_firing_time = 5000 (meaning 5ms)
+  after: |
+    # After 0.120 — decision timer metric in milliseconds:
+    # processor_tail_sampling_sampling_decision_timer_firing_time = 5 (meaning 5ms)
+    #
+    # No collector YAML config change required.
+    # Divide all alert thresholds referencing this metric by 1000.
+guidance: |
+  Divide all alert thresholds referencing the tail_sampling decision timer metric by 1000.
+  The unit changed from microseconds to milliseconds in 0.120.
+
+  No collector YAML config change is required — update dashboard thresholds and alert
+  rule conditions in your monitoring/alerting system only.
+description: >-
+  In 0.120, the unit of the tail_sampling processor's sampling decision timer metric changed
+  from microseconds to milliseconds. Alert thresholds set in microseconds will be off by a
+  factor of 1000 after the upgrade — a threshold of 5000 (meaning 5ms in microseconds)
+  should become 5 (meaning 5ms in milliseconds). No collector YAML config change is required.
+  Update all alert thresholds and dashboard queries referencing the tail_sampling decision
+  timer metric.
+see_also:
+  - P2-06

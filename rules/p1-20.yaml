@@ -1,0 +1,36 @@
+id: P1-20
+category: p1
+introduced: "0.129"
+title: "sending_queue::blocking Field Removed"
+look_for:
+  - path: "$.exporters.*.sending_queue.blocking"
+    match: exists
+  - path: "$.exporters.*.sending_queue.blocking"
+    match: exists
+    in_comments: true
+migration:
+  key_moves:
+    - from: $.exporters.*.sending_queue.blocking
+      to: $.exporters.*.sending_queue.block_on_overflow
+  before: |
+    exporters:
+      otlp:
+        sending_queue:
+          blocking: true
+  after: |
+    exporters:
+      otlp:
+        sending_queue:
+          block_on_overflow: true
+guidance: |
+  Rename blocking: to block_on_overflow: inside the sending_queue: block of any
+  affected exporter. The value (true/false) stays the same — only the field name changes.
+
+  This applies to all exporters using sending_queue: (otlp, otlphttp, signalfx, splunk_hec,
+  etc.). Search the full config for blocking: inside any sending_queue: block.
+description: >-
+  Causes startup failure. The blocking option was deprecated in 0.123 in favour of
+  block_on_overflow and removed in 0.129. Any exporter config that still has
+  blocking: will fail to parse.
+see_also:
+  - P1-10

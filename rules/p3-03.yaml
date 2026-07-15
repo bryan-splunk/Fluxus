@@ -1,0 +1,60 @@
+id: P3-03
+category: p3
+introduced: "0.146"
+title: "k8s_attributes Processor — New Semconv Feature Gates Available"
+look_for:
+  - path: $.processors.k8s_attributes
+    match: exists
+  - path: $.processors.k8sattributes
+    match: exists
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.processors.k8s_attributes
+      comment_text: |
+        # UPGRADE(P3-03 v0.146): k8s_attributes — new semconv feature gates available (opt-in alpha).
+        # processor.k8sattributes.EmitV1K8sConventions   → enables k8s.<type>.label.<name> (singular)
+        # processor.k8sattributes.DontEmitV0K8sConventions → disables k8s.<type>.labels.<name> (plural)
+        # allowLabelsAnnotationsSingular gate (0.135) deprecated in 0.146. otelcol.k8s.pod.association metric off by default (0.151).
+    - comment_path: $.processors.k8sattributes
+      comment_text: |
+        # UPGRADE(P3-03 v0.146): k8sattributes — new semconv feature gates available (opt-in alpha).
+        # See P3-03 assessment. No config change required unless opting into new k8s conventions.
+  before: |
+    processors:
+      k8s_attributes:
+        extract:
+          labels:
+            - tag_name: k8s.pod.labels.<name>   # plural — v0 convention
+              key: <label-key>
+  after: |
+    # New alpha feature gates in 0.146 (opt-in):
+    # processor.k8sattributes.EmitV1K8sConventions
+    #   → enables k8s.<type>.label.<name> (singular)
+    # processor.k8sattributes.DontEmitV0K8sConventions
+    #   → disables k8s.<type>.labels.<name> (plural)
+    #
+    # allowLabelsAnnotationsSingular gate (0.135) deprecated in 0.146.
+    # otelcol.k8s.pod.association metric disabled by default (0.151).
+    #
+    # No config change required unless opting into new semantic conventions.
+guidance: |
+  No config change is required unless you want to opt into new Kubernetes semantic conventions.
+
+  New alpha feature gates available in 0.146 (opt-in):
+  - processor.k8sattributes.EmitV1K8sConventions: enables k8s.<type>.label.<name> (singular)
+  - processor.k8sattributes.DontEmitV0K8sConventions: disables k8s.<type>.labels.<name> (plural)
+
+  The allowLabelsAnnotationsSingular gate (added in 0.135) was deprecated in 0.146.
+  The otelcol.k8s.pod.association metric was disabled by default in 0.151 until pod_identifier
+  is properly calculated.
+description: >-
+  In 0.146, new alpha feature gates were introduced for k8s_attributes processor to support
+  new Kubernetes semantic convention attribute names (singular vs plural forms). The
+  allowLabelsAnnotationsSingular gate from 0.135 was deprecated. In 0.151, the
+  otelcol.k8s.pod.association metric was disabled by default until pod_identifier is
+  properly calculated. No config change is required unless you wish to opt into the new
+  semantic conventions via the feature gates.
+see_also:
+  - P1-26
+  - P3-01

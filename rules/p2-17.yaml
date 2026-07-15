@@ -1,0 +1,41 @@
+id: P2-17
+category: p2
+introduced: "0.149"
+title: "Internal Metrics — service_name / service_instance_id / service_version Labels Removed"
+look_for:
+  - path: $.receivers.prometheus
+    match: exists
+migration:
+  strategy: auto
+  key_moves:
+    # Inject a notice on the prometheus receiver so dashboard/alert owners see the action item.
+    - comment_path: $.receivers.prometheus
+      comment_once: true
+      comment_text: |
+        # [P2-17 UPGRADE v0.149] Internal metrics labels removed: service_name, service_instance_id,
+        # service_version are no longer stamped on individual metric series. Use target_info for
+        # service label lookups instead. Update dashboards/alerts that join on these labels.
+  before: |
+    # Before 0.149 — service_name, service_instance_id, service_version
+    # were stamped on every individual internal metric series.
+  after: |
+    # After 0.149 — these attributes only appear in target_info metric.
+    # Update all dashboard queries and alerts that join on these labels.
+    # Use target_info for service label lookups instead.
+guidance: |
+  Update dashboard queries and alert rules that filter individual metrics by
+  service_name, service_instance_id, or service_version.
+
+  These labels no longer appear on individual metric series after 0.149. They are now
+  only available via the target_info metric.
+
+  To look up service labels for a metric, join on target_info using the common labels
+  (e.g. job, instance) in your query system (Prometheus, Splunk, etc.).
+
+  No YAML config change is required — this is a dashboard/query update only.
+description: >-
+  In 0.149, the service_name, service_instance_id, and service_version labels were removed
+  from individual internal metric series. These attributes now only appear in the target_info
+  metric. Dashboard queries, alerts, and OTTL rules that filter individual metric series by
+  these labels will return no results after upgrade. Update all such queries to perform
+  service label lookups via target_info joins.

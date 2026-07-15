@@ -1,0 +1,15 @@
+cases:
+  - name: "fires when jaeger receiver present"
+    config: |
+      receivers:
+        jaeger:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:14250
+    should_fire: true
+
+  - name: "silent when jaeger absent"
+    config: |
+      receivers:
+        otlp: {}
+    should_fire: false
