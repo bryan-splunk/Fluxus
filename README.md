@@ -21,7 +21,7 @@ The project now provides three ways to consume this knowledge, depending on your
 | `web/`                                 | Single-page web UI (Alpine.js + Tailwind CSS) served by the web server.                                                                                                              |
 | `DESIGN-SUMMARY.md`                    | Architecture, patterns, and technology decisions for the Go application.                                                                                                             |
 | `AGENTS.md`                            | Onboarding guide for AI agents continuing work on this project.                                                                                                                      |
-| `UNLICENSED.md`                        | This is free and unencumbered software released into the public domain.                                                                                                                    |
+| `LICENSED.md`                        | This is free and unencumbered software released into the public domain.                                                                                                                    |
 
 ---
 
@@ -238,5 +238,5 @@ All breaking change data sourced from official GitHub release pages:
 
 ## License
 
-Please read UNLICENSED.md  
+Please read LICENSED.md  
 Content derived from public OpenTelemetry and Splunk release notes.
