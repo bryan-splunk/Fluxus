@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"cd.splunkdev.com/bdavies/fluxus/engine"
+	"github.com/bryan-splunk/Fluxus/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"

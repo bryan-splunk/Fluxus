@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"cd.splunkdev.com/bdavies/fluxus/engine"
+	"github.com/bryan-splunk/Fluxus/engine"
 )
 
 var rulesDir = "rules"
