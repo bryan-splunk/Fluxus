@@ -1,4 +1,4 @@
-module cd.splunkdev.com/bdavies/fluxus
+module github.com/bryan-splunk/Fluxus
 
 go 1.26.4
 

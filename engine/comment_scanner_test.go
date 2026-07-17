@@ -3,7 +3,7 @@ package engine_test
 import (
 	"testing"
 
-	"cd.splunkdev.com/bdavies/fluxus/engine"
+	"github.com/bryan-splunk/Fluxus/engine"
 	"github.com/stretchr/testify/assert"
 )
 
