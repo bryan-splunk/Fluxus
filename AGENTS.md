@@ -506,7 +506,7 @@ DONE with the commit/PR that closed them.
 
 ## Important Context
 
-- The repo is at `https://cd.splunkdev.com/bdavies/collector-upgrade-process.git`
+- The repo is at `https://github.com/bryan-splunk/Fluxus.git`
 - JetBrains GoLand is the primary IDE for direct coding and debugging; **Cursor** is used alongside it to run the AI agent (which benefits from full workspace access)
 - The `Skill/UPGRADE-KNOWLEDGE.md` is the authoritative source for rule content — if a rule file and UPGRADE-KNOWLEDGE.md disagree, UPGRADE-KNOWLEDGE.md wins
 - Version range covered: v0.120 → v0.153 (75 config rules total: 26 P1, 35 P2, 14 P3 — plus 3 SEC-P1 security rules)
