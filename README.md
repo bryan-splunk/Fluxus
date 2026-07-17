@@ -202,6 +202,83 @@ Changes most likely to cause silent failures or data loss:
 
 ---
 
+## Prerequisites & developer setup
+
+Follow these steps on a fresh machine to go from zero to a running build.
+
+### Step 1 — Install Go
+
+`go.mod` requires **Go 1.26.4 or higher**. Download the installer from [go.dev/dl](https://go.dev/dl/).
+
+On Windows the installer adds `go` to your PATH automatically. Verify it worked:
+
+```powershell
+go version
+```
+
+### Step 2 — Get the code
+
+```powershell
+git clone https://github.com/bryan-splunk/Fluxus.git
+cd Fluxus
+```
+
+### Step 3 — Configure GoLand
+
+1. Open the cloned folder in GoLand (`File → Open`).
+2. GoLand detects `go.mod` automatically and shows a **"Configure Go SDK"** banner at the top of the editor.
+3. Click it (or go to `File → Settings → Go → GOROOT`) and point it at your Go installation (e.g. `C:\Program Files\Go`).
+4. GoLand indexes the module — all dependencies resolve automatically, no further configuration needed.
+
+### Step 4 — Run configurations (GoLand)
+
+The tool has two modes. The web server is the recommended starting point for most users.
+
+**Web server (recommended)**
+
+The web server runs as a subcommand of the CLI binary. Create the run config manually:
+
+1. `Run → Edit Configurations → + → Go Build`
+2. Set **Package path** to `github.com/bryan-splunk/Fluxus/cmd/cli`
+3. Set **Program arguments** to `server --rules-dir rules --port 8080`
+4. Set **Working directory** to the repo root (the `web/` folder containing the UI is resolved relative to this path at runtime)
+5. Name it `fluxus-server`
+6. Click Run, then open `http://localhost:8080` in a browser
+
+**CLI (assess / apply)**
+
+Open `cmd/cli/main.go` and click the green Run triangle next to `func main()`. GoLand auto-generates a run config with the correct package path. Add program arguments for a quick test run:
+
+```
+assess --rules-dir rules --output-dir ./out testdata/agent-sample.yaml
+```
+
+**Terminal alternative (no run config needed)**
+
+```powershell
+# Start web server
+go run ./cmd/cli server --rules-dir rules --port 8080
+
+# Run a CLI assessment
+go run ./cmd/cli assess --rules-dir rules --output-dir ./out testdata/agent-sample.yaml
+```
+
+### Step 5 — Verify
+
+```powershell
+go test ./...
+```
+
+All tests should pass. The output will confirm the module path:
+
+```
+ok  github.com/bryan-splunk/Fluxus/engine
+```
+
+> **Note on IDE config files:** `.idea/` (GoLand) and `.vscode/` are excluded from git by `.gitignore`. This is intentional — IDE run configurations embed machine-specific paths and do not transfer between machines. The terminal commands above are the portable alternative.
+
+---
+
 ## Development
 
 ```powershell
