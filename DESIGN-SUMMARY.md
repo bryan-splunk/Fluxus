@@ -195,7 +195,7 @@ Wildcards (`*`) in paths are tracked and substituted into the target path so nam
 ## Project Structure
 
 ```
-collector-upgrade-process/
+Fluxus/
 │
 ├── DESIGN-SUMMARY.md             ← this file
 ├── AGENTS.md                     ← onboarding guide for AI agents
