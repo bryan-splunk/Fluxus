@@ -214,7 +214,7 @@ order: 20
 
 ```
 module: github.com/bryan-splunk/fluxus
-go version: 1.22
+go version: 1.26.4
 ```
 
 Main dependencies:

@@ -84,7 +84,11 @@ See `fluxus --help` for the full flag reference.
 go run ./cmd/server --rules-dir rules --port 8080
 ```
 
-Open `http://localhost:8080` in a browser. Upload your config files, review detected changes, and download the migrated output — no command line required.
+Open `http://127.0.0.1:8080` in a browser. Upload your config files, review detected changes, and download the migrated output — no command line required.
+
+> **Local use only.** The web server binds to `127.0.0.1` (loopback) and is intended for use on your own machine or a trusted network. Do not expose it to the internet or an untrusted network without adding authentication and TLS in front of it.
+
+> **Internet access required for the web UI.** The browser UI loads Alpine.js and marked from jsDelivr CDN (pinned to specific versions). Tailwind CSS is loaded from `cdn.tailwindcss.com`. An active internet connection is required when using `fluxus server`. The CLI works fully offline.
 
 ---
 

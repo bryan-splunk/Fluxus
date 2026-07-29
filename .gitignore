@@ -43,8 +43,24 @@ go.work.sum
 PreAssessment.md
 OperationalAssessment.md
 
+# Unix/macOS/Linux build artifacts (*.exe already covered above)
+fluxus
+fluxus-server
+
+# Certificate and key files
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+
+# Common CLI output directories
+/out/
+/output/
+
 # Default working directories for input and outputs
-# new users may have different folders and will need to adjust they local ignore
+# new users may have different folders and will need to adjust their local ignore
 /LocalSampleData/
 /CompletedTestRuns/
 /LocalSampleData/*
