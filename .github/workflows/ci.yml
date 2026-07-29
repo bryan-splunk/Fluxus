@@ -1,0 +1,24 @@
+name: CI
+
+# Run tests on every push to any branch and on every pull request.
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'   # Tag pushes are handled by release.yml
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: go test ./...

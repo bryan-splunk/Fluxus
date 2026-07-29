@@ -21,11 +21,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+
+      # ── Tests ──────────────────────────────────────────────────────────────
+      - name: Run tests
+        run: go test ./...
 
       # ── Windows build ──────────────────────────────────────────────────────
       - name: Build (Windows amd64)
@@ -69,7 +73,7 @@ jobs:
 
       # ── Create GitHub Release ──────────────────────────────────────────────
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           # Tag-push: use the real tag. Manual run: use the version input.
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
