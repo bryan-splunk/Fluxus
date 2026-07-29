@@ -113,7 +113,7 @@ See `fluxus --help` for the full flag reference.
 ## Quick start — web UI
 
 ```powershell
-go run ./cmd/server --rules-dir rules --port 8080
+.\fluxus.exe server --rules-dir rules --port 8080
 ```
 
 Open `http://127.0.0.1:8080` in a browser. Upload your config files, review detected changes, and download the migrated output — no command line required.
