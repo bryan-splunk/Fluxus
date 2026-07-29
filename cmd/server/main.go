@@ -20,7 +20,8 @@ func Start(port int, rulesDirectory string) error {
 
 func runServer(port int, rulesDirectory string) error {
 	rulesDir = rulesDirectory
-	address := fmt.Sprintf(":%d", port)
+	// Bind to loopback only — this server is intended for local/trusted use.
+	address := fmt.Sprintf("127.0.0.1:%d", port)
 
 	mux := http.NewServeMux()
 
@@ -32,7 +33,7 @@ func runServer(port int, rulesDirectory string) error {
 	mux.HandleFunc("/api/apply", handleApply)
 	mux.HandleFunc("/api/rules", handleListRules)
 
-	log.Printf("🚀 FLUXUS server listening on http://localhost%s", address)
+	log.Printf("🚀 FLUXUS server listening on http://127.0.0.1:%d", port)
 	return http.ListenAndServe(address, mux)
 }
 
@@ -61,6 +62,8 @@ func handleAssess(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 50*1024*1024) // 50 MB cap
 
 	var req assessRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -135,6 +138,8 @@ func handleApply(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 50*1024*1024) // 50 MB cap
 
 	var req applyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
