@@ -25,6 +25,38 @@ The project now provides three ways to consume this knowledge, depending on your
 
 ---
 
+## Download pre-built binaries
+
+Pre-built releases for Windows and Linux are available on the
+[Releases page](https://github.com/bryan-splunk/fluxus/releases).
+
+Each release contains a self-contained archive — no Go toolchain required:
+
+| Platform | Archive | Contents |
+|---|---|---|
+| Windows (64-bit) | `fluxus-windows-amd64.zip` | `fluxus.exe`, `rules/`, `web/`, `README.md` |
+| Linux (64-bit) | `fluxus-linux-amd64.tar.gz` | `fluxus`, `rules/`, `web/`, `README.md` |
+
+**Windows quick-start:**
+
+```powershell
+# Extract the zip, then from the extracted folder:
+.\fluxus.exe assess --rules-dir rules --output-dir ./out agent.yaml
+```
+
+**Linux quick-start:**
+
+```bash
+# Extract the archive, then from the extracted folder:
+chmod +x fluxus
+./fluxus assess --rules-dir rules --output-dir ./out agent.yaml
+```
+
+> The `rules/` and `web/` directories must be alongside the binary (or pointed to
+> via `--rules-dir`). Both are included in every release archive.
+
+---
+
 ## Quick start — Go CLI
 
 ```powershell
