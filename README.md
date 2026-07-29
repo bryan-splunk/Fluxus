@@ -239,7 +239,7 @@ The tool has two modes. The web server is the recommended starting point for mos
 The web server runs as a subcommand of the CLI binary. Create the run config manually:
 
 1. `Run → Edit Configurations → + → Go Build`
-2. Set **Package path** to `github.com/bryan-splunk/Fluxus/cmd/cli`
+2. Set **Package path** to `github.com/bryan-splunk/fluxus/cmd/cli`
 3. Set **Program arguments** to `server --rules-dir rules --port 8080`
 4. Set **Working directory** to the repo root (the `web/` folder containing the UI is resolved relative to this path at runtime)
 5. Name it `fluxus-server`
@@ -272,7 +272,7 @@ go test ./...
 All tests should pass. The output will confirm the module path:
 
 ```
-ok  github.com/bryan-splunk/Fluxus/engine
+ok  github.com/bryan-splunk/fluxus/engine
 ```
 
 > **Note on IDE config files:** `.idea/` (GoLand) and `.vscode/` are excluded from git by `.gitignore`. This is intentional — IDE run configurations embed machine-specific paths and do not transfer between machines. The terminal commands above are the portable alternative.

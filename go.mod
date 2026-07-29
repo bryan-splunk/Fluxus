@@ -1,4 +1,4 @@
-module github.com/bryan-splunk/Fluxus
+module github.com/bryan-splunk/fluxus
 
 go 1.26.4
 
