@@ -1,0 +1,81 @@
+name: Release
+
+# Triggered automatically when a version tag (e.g. v1.0.0) is pushed,
+# OR manually via the "Run workflow" button in the GitHub Actions UI.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag for the test release (e.g. v1.0.0-test)'
+        required: false
+        default: 'v0.0.0-test'
+
+permissions:
+  contents: write   # required to create a GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # ── Windows build ──────────────────────────────────────────────────────
+      - name: Build (Windows amd64)
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: go build -ldflags="-s -w" -o fluxus.exe ./cmd/cli
+
+      # ── Linux build ────────────────────────────────────────────────────────
+      - name: Build (Linux amd64)
+        env:
+          GOOS: linux
+          GOARCH: amd64
+          CGO_ENABLED: 0
+        run: go build -ldflags="-s -w" -o fluxus ./cmd/cli
+
+      # ── Package Windows ────────────────────────────────────────────────────
+      # Archive contains: fluxus.exe  rules/  web/  README.md  UNLICENSE.md
+      - name: Package (Windows)
+        run: |
+          mkdir fluxus-windows-amd64
+          cp fluxus.exe   fluxus-windows-amd64/
+          cp -r rules     fluxus-windows-amd64/
+          cp -r web       fluxus-windows-amd64/
+          cp README.md    fluxus-windows-amd64/
+          cp UNLICENSE.md fluxus-windows-amd64/
+          zip -r fluxus-windows-amd64.zip fluxus-windows-amd64/
+
+      # ── Package Linux ──────────────────────────────────────────────────────
+      # Archive contains: fluxus  rules/  web/  README.md  UNLICENSE.md
+      - name: Package (Linux)
+        run: |
+          mkdir fluxus-linux-amd64
+          cp fluxus       fluxus-linux-amd64/
+          cp -r rules     fluxus-linux-amd64/
+          cp -r web       fluxus-linux-amd64/
+          cp README.md    fluxus-linux-amd64/
+          cp UNLICENSE.md fluxus-linux-amd64/
+          tar -czf fluxus-linux-amd64.tar.gz fluxus-linux-amd64/
+
+      # ── Create GitHub Release ──────────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Tag-push: use the real tag. Manual run: use the version input.
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+          # Manual runs are always marked pre-release so they don't pollute the releases page.
+          prerelease: ${{ github.ref_type != 'tag' }}
+          files: |
+            fluxus-windows-amd64.zip
+            fluxus-linux-amd64.tar.gz
+          generate_release_notes: true
