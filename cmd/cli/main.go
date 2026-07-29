@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bryan-splunk/Fluxus/cmd/server"
-	"github.com/bryan-splunk/Fluxus/engine"
+	"github.com/bryan-splunk/fluxus/cmd/server"
+	"github.com/bryan-splunk/fluxus/engine"
 	"github.com/spf13/cobra"
 )
 

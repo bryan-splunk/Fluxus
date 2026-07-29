@@ -18,7 +18,7 @@ A standalone Go application that automates upgrading Splunk OpenTelemetry Collec
 Collector upgRAde Process/
 ├── DESIGN-SUMMARY.md         ← Full architecture doc — READ THIS FIRST
 ├── AGENTS.md                 ← This file
-├── go.mod / go.sum           ← Go module (module: github.com/bryan-splunk/Fluxus)
+├── go.mod / go.sum           ← Go module (module: github.com/bryan-splunk/fluxus)
 │
 ├── rules/                    ← upgrade rule store (B-xx, C-xx, I-xx, CA-xx; ~75 files)
 │   ├── README.md             ← AUTHORITATIVE rule authoring guide — read before editing rules
@@ -213,7 +213,7 @@ order: 20
 ## Go Module Info
 
 ```
-module: github.com/bryan-splunk/Fluxus
+module: github.com/bryan-splunk/fluxus
 go version: 1.22
 ```
 
