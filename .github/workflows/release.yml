@@ -13,12 +13,32 @@ on:
         required: false
         default: 'v0.0.0-test'
 
+# Workflow-level default — read only. The release job overrides to write.
 permissions:
-  contents: write   # required to create a GitHub Release
+  contents: read
 
 jobs:
-  release:
+  # ── Test ────────────────────────────────────────────────────────────────────
+  test:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Run tests
+        run: go test ./...
+
+  # ── Release ─────────────────────────────────────────────────────────────────
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to create a GitHub Release
 
     steps:
       - uses: actions/checkout@v6
@@ -26,26 +46,26 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-
-      # ── Tests ──────────────────────────────────────────────────────────────
-      - name: Run tests
-        run: go test ./...
+          cache: true
+          cache-dependency-path: go.sum
 
       # ── Windows build ──────────────────────────────────────────────────────
       - name: Build (Windows amd64)
         env:
           GOOS: windows
           GOARCH: amd64
-          CGO_ENABLED: 0
-        run: go build -ldflags="-s -w" -o fluxus.exe ./cmd/cli
+          CGO_ENABLED: '0'
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+        run: go build -ldflags="-s -w -X main.version=${VERSION}" -o fluxus.exe ./cmd/cli
 
       # ── Linux build ────────────────────────────────────────────────────────
       - name: Build (Linux amd64)
         env:
           GOOS: linux
           GOARCH: amd64
-          CGO_ENABLED: 0
-        run: go build -ldflags="-s -w" -o fluxus ./cmd/cli
+          CGO_ENABLED: '0'
+          VERSION: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+        run: go build -ldflags="-s -w -X main.version=${VERSION}" -o fluxus ./cmd/cli
 
       # ── Package Windows ────────────────────────────────────────────────────
       # Archive contains: fluxus.exe  rules/  web/  README.md  UNLICENSE.md

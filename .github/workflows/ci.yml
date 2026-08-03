@@ -1,12 +1,10 @@
 name: CI
 
-# Run tests on every push to any branch and on every pull request.
+# Test every commit that reaches main and every pull request.
+# Tag pushes trigger release.yml, not this workflow.
 on:
   push:
-    branches:
-      - '**'
-    tags-ignore:
-      - '**'   # Tag pushes are handled by release.yml
+    branches: [main]
   pull_request:
 
 jobs:
@@ -19,6 +17,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
 
       - name: Run tests
         run: go test ./...

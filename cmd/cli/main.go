@@ -14,6 +14,10 @@ import (
 const defaultRulesDir = "rules"
 const defaultTargetVersion = "" // empty = latest (all rules)
 
+// version is overridden at release build time via -ldflags "-X main.version=<tag>".
+// Local dev builds report "dev".
+var version = "dev"
+
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -21,8 +25,9 @@ func main() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "fluxus",
-	Short: "FLUXUS — Splunk OTel Collector config upgrade tool",
+	Use:     "fluxus",
+	Version: version,
+	Short:   "FLUXUS — Splunk OTel Collector config upgrade tool",
 	Long: `FLUXUS scans Splunk OpenTelemetry Collector YAML configuration files for
 breaking changes and applies upgrades safely using a tick-per-version
 State/Effect pattern.
