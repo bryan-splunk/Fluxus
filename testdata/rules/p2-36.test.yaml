@@ -12,16 +12,22 @@ cases:
             receivers: [kafka]
     should_fire: true
     apply_contains:
-      - "P2-36 v0.154"
-      - "group_rebalance_strategy"
+      - "group_rebalance_strategies:"
+    apply_not_contains:
+      - "group_rebalance_strategy:"
 
-  - name: "fires for various rebalance strategy values"
+  - name: "fires for various rebalance strategy values — value is preserved in list"
     config: |
       receivers:
         kafka:
           brokers: [kafka:9092]
           group_rebalance_strategy: roundrobin
     should_fire: true
+    apply_contains:
+      - "group_rebalance_strategies:"
+      - "roundrobin"
+    apply_not_contains:
+      - "group_rebalance_strategy:"
 
   - name: "silent when already using group_rebalance_strategies"
     config: |

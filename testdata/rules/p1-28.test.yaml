@@ -16,8 +16,13 @@ cases:
     should_fire: true
     apply_contains:
       - "P1-28 UPGRADE v0.154"
+      - "jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar"
+    apply_not_contains:
+      - "type: jmx"
+      - "host: localhost"
+      - "serviceURL:"
 
-  - name: "fires when multiple monitors include jmx"
+  - name: "fires when multiple monitors include jmx — only jmx removed, cpu stays"
     config: |
       receivers:
         smartagent:
@@ -31,6 +36,11 @@ cases:
           metrics:
             receivers: [smartagent]
     should_fire: true
+    apply_contains:
+      - "type: cpu"
+      - "jar_path:"
+    apply_not_contains:
+      - "type: jmx"
 
   - name: "silent when smartagent has no jmx monitor"
     config: |

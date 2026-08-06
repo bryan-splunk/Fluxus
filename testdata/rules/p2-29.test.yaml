@@ -9,6 +9,11 @@ cases:
               cert_file: /etc/certs/kafka.crt
               key_file: /etc/certs/kafka.key
     should_fire: true
+    apply_contains:
+      - "tls:"
+      - "cert_file: /etc/certs/kafka.crt"
+    apply_not_contains:
+      - "auth:\n    tls:"
 
   - name: "fires when kafka exporter has auth.tls"
     config: |
@@ -19,6 +24,9 @@ cases:
             tls:
               cert_file: /etc/certs/kafka.crt
     should_fire: true
+    apply_contains:
+      - "tls:"
+      - "cert_file: /etc/certs/kafka.crt"
 
   - name: "fires when kafkametrics has auth.tls"
     config: |
@@ -29,6 +37,9 @@ cases:
             tls:
               insecure_skip_verify: true
     should_fire: true
+    apply_contains:
+      - "tls:"
+      - "insecure_skip_verify: true"
 
   - name: "silent when kafka present but no auth.tls"
     config: |

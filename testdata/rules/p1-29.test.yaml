@@ -17,8 +17,12 @@ cases:
     should_fire: true
     apply_contains:
       - "P1-29 UPGRADE v0.154"
+      - "endpoint: localhost:39041"
+    apply_not_contains:
+      - "type: hana"
+      - "host: hana-host"
 
-  - name: "fires when hana is among multiple monitors"
+  - name: "fires when hana is among multiple monitors — only hana removed, cpu stays"
     config: |
       receivers:
         smartagent:
@@ -28,6 +32,10 @@ cases:
               host: hana-host
               port: 39041
     should_fire: true
+    apply_contains:
+      - "type: cpu"
+    apply_not_contains:
+      - "type: hana"
 
   - name: "silent when smartagent has no hana monitor"
     config: |

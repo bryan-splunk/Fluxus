@@ -8,28 +8,37 @@ look_for:
   - raw_pattern: "(?m)type:\\s+(?:signalfx-forwarder|trace-forwarder)\\s*$"
 logic: and
 migration:
-  strategy: guided
+  strategy: auto
   key_moves:
+    # Remove the type:signalfx-forwarder entry from the smartagent monitors list.
+    - sequence_map_path: $.receivers.smartagent.monitors
+      match_key: type
+      match_value: signalfx-forwarder
+    # Remove the type:trace-forwarder entry from the smartagent monitors list.
+    - sequence_map_path: $.receivers.smartagent.monitors
+      match_key: type
+      match_value: trace-forwarder
+    # Inject an otlp receiver skeleton if absent (the correct replacement for both forwarders).
+    - to: $.receivers.otlp
+      default: |
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4418
     - comment_path: $.receivers.smartagent
       comment_once: true
       comment_text: |
         # [P1-30 UPGRADE v0.155] signalfx-forwarder and trace-forwarder monitors REMOVED.
+        # The monitor entries have been removed from the monitors list above.
+        # An otlp receiver skeleton has been injected as the correct replacement.
         # IMPORTANT: The v0.155 release notes incorrectly suggest using 'signalfxreceiver' as
-        # the replacement. The signalfx receiver was already PERMANENTLY REMOVED from the Splunk
-        # OTel Collector distribution in v0.153 (see P1-04). Do NOT configure receivers.signalfx:.
+        # the replacement. The signalfx receiver was PERMANENTLY REMOVED in v0.153 (see P1-04).
+        # Do NOT configure receivers.signalfx:.
         #
         # CORRECT migration path:
-        # 1. Remove the signalfx-forwarder / trace-forwarder monitor entries below.
-        # 2. Reconfigure any agents/applications that were pushing SignalFx-format metrics or
-        #    traces to the forwarder listener to emit OTLP instead (gRPC port 4317 or HTTP 4318).
-        # 3. Add an otlp receiver to this collector to receive the migrated telemetry:
-        #    receivers:
-        #      otlp:
-        #        protocols:
-        #          grpc:
-        #            endpoint: 0.0.0.0:4317
-        #          http:
-        #            endpoint: 0.0.0.0:4318
+        # 1. Reconfigure agents/apps that were pushing SignalFx-format data to emit OTLP instead.
+        # 2. Use the injected otlp receiver (gRPC port 4317 / HTTP port 4418) to receive data.
   before: |
     receivers:
       smartagent:

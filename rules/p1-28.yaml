@@ -8,23 +8,30 @@ look_for:
   - raw_pattern: "(?m)type:\\s+jmx\\s*$"
 logic: and
 migration:
-  strategy: guided
+  strategy: auto
   key_moves:
+    # Remove the type:jmx entry from the smartagent monitors list (handles named instances).
+    - sequence_map_path: $.receivers.smartagent.monitors
+      match_key: type
+      match_value: jmx
+    # Inject a jmx receiver skeleton if absent — user fills in jar_path, endpoint, target_system.
+    # P1-31 (v0.157) will further migrate this jmx receiver to the jmx-scraper external tool.
+    - to: $.receivers.jmx
+      default: |
+        jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
+        endpoint: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
+        target_system: jvm
+        collection_interval: 10s
     - comment_path: $.receivers.smartagent
       comment_once: true
       comment_text: |
         # [P1-28 UPGRADE v0.154] Smart Agent jmx monitor REMOVED — the bundled Java runtime is gone.
-        # ACTION: Migrate to the 'jmx' receiver from opentelemetry-collector-contrib.
-        # Requirements: a compatible Java runtime (11+) must be installed on the host.
-        # Example config:
-        #   receivers:
-        #     jmx:
-        #       jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
-        #       endpoint: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
-        #       target_system: jvm
-        #       collection_interval: 10s
+        # The jmx monitor entry has been removed from the monitors list above.
+        # A jmx receiver skeleton has been injected — update jar_path, endpoint, target_system.
+        # Requirements: a compatible Java runtime (JRE 11+) must be installed on the host.
         # Download the JMX metrics gatherer jar from:
         # https://github.com/open-telemetry/opentelemetry-java-contrib/releases
+        # NOTE: In v0.157 the jmx receiver itself was removed — see P1-31 for the next migration step.
   before: |
     extensions:
       smartagent:

@@ -374,8 +374,47 @@ func replaceSequenceValues(root *yaml.Node, sequencePath, oldValue, newValue str
 	return nil // non-fatal: component may simply not be in any pipeline
 }
 
+// deleteSequenceMapItems finds all sequence nodes at move.SequenceMapPath and removes
+// every mapping item in each sequence where move.MatchKey == move.MatchValue.
+// Returns a slice of warning strings (non-fatal; an empty sequence is not an error).
+func deleteSequenceMapItems(root *yaml.Node, move KeyMove) []string {
+	hits := findAll(root, normalizePath(move.SequenceMapPath))
+	for _, hit := range hits {
+		seqNode := hit.parent.Content[hit.keyIndex+1]
+		if seqNode.Kind != yaml.SequenceNode {
+			continue
+		}
+		kept := make([]*yaml.Node, 0, len(seqNode.Content))
+		for _, item := range seqNode.Content {
+			if item.Kind != yaml.MappingNode {
+				kept = append(kept, item)
+				continue
+			}
+			matched := false
+			for i := 0; i+1 < len(item.Content); i += 2 {
+				keyNode := item.Content[i]
+				valNode := item.Content[i+1]
+				if keyNode.Value == move.MatchKey && valNode.Value == move.MatchValue {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				kept = append(kept, item)
+			}
+		}
+		seqNode.Content = kept
+	}
+	return nil
+}
+
 // executeKeyMove executes a single KeyMove operation on the YAML node tree.
 func executeKeyMove(root *yaml.Node, keyMove KeyMove) []string {
+	// Sequence map-item delete: remove mapping items from a sequence by key=value match.
+	if keyMove.SequenceMapPath != "" {
+		return deleteSequenceMapItems(root, keyMove)
+	}
+
 	// Comment injection: prepend CommentText as a HeadComment on the key at CommentPath.
 	if keyMove.CommentPath != "" {
 		commentPath := normalizePath(keyMove.CommentPath)
@@ -482,7 +521,9 @@ func executeKeyMove(root *yaml.Node, keyMove KeyMove) []string {
 		// from and to share the same parent path (e.g. receivers.hostmetrics →
 		// receivers.host_metrics), do an in-place key rename. This preserves the
 		// original key order and avoids comment drift.
-		if isSameParentRename(fromPath, toPath) {
+		// Skip the optimisation when WrapAsSequence is set — that operation must
+		// rewrite the value node, which the in-place rename path does not do.
+		if isSameParentRename(fromPath, toPath) && !keyMove.WrapAsSequence {
 			toLeaf := toPath[strings.LastIndex(toPath, ".")+1:]
 			fromLeaf := fromPath[strings.LastIndex(fromPath, ".")+1:]
 			for _, hit := range results {
@@ -507,8 +548,16 @@ func executeKeyMove(root *yaml.Node, keyMove KeyMove) []string {
 		})
 		for _, hit := range results {
 			valueNode := hit.parent.Content[hit.keyIndex+1]
+			movedNode := cloneNode(valueNode)
+			// WrapAsSequence: wrap the moved scalar in a single-item sequence node.
+			// Used to rename a scalar field to a list field (e.g. group_rebalance_strategy → group_rebalance_strategies).
+			if keyMove.WrapAsSequence {
+				seqNode := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq", Style: yaml.FlowStyle}
+				seqNode.Content = []*yaml.Node{movedNode}
+				movedNode = seqNode
+			}
 			concreteTo := resolveWildcards(hit.fullPath, fromPath, toPath)
-			if err := setAtPath(root, concreteTo, cloneNode(valueNode)); err != nil {
+			if err := setAtPath(root, concreteTo, movedNode); err != nil {
 				warnings = append(warnings, fmt.Sprintf("set %s: %v", concreteTo, err))
 				continue
 			}

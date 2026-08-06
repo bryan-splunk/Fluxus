@@ -15,6 +15,9 @@ cases:
     apply_contains:
       - "P1-31 UPGRADE v0.157"
       - "jmx-scraper"
+    apply_not_contains:
+      - "jar_path:"
+      - "target_system:"
 
   - name: "fires when jmx receiver is configured with jvm target"
     config: |

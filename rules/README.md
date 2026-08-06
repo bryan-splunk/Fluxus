@@ -463,6 +463,43 @@ key_moves:
 > move (read value → write at same path → delete source), which will **delete
 > the key**. Always use the to-only form shown above for inject operations.
 
+#### sequence_map_path — delete a map item from a sequence
+
+Deletes all items from a YAML sequence where a specific key equals a specific value.
+Use when a sequence contains mappings (e.g. a `monitors:` list) and you need to remove
+entries that match a known type.
+
+```yaml
+key_moves:
+  - sequence_map_path: $.receivers.smartagent.monitors
+    match_key:         type
+    match_value:       jmx     # removes every {type: jmx, ...} entry
+```
+
+- `sequence_map_path` must resolve to a YAML sequence node whose items are mappings.
+- Named-instance matching applies automatically (e.g. `$.receivers.smartagent` also matches `smartagent/windows`).
+- Items that do not contain `match_key: match_value` are preserved unchanged.
+- If the sequence is empty after deletion, the key is left as an empty sequence (not removed).
+- This operation is mutually exclusive with `from`, `to`, `comment_path`, and `sequence_path`.
+
+#### wrap_as_sequence — rename a scalar field to a list field
+
+On a `from → to` move, set `wrap_as_sequence: true` to wrap the moved scalar value in a
+new single-item flow sequence at the destination path. This is the correct pattern when a
+field was renamed from a scalar to a list type.
+
+```yaml
+key_moves:
+  - from:             $.receivers.kafka.group_rebalance_strategy
+    to:               $.receivers.kafka.group_rebalance_strategies
+    wrap_as_sequence: true   # value "sticky" becomes [sticky]
+```
+
+- Preserves the original value; only the key name and YAML type change.
+- Named instances are handled automatically (e.g. `kafka/consumer`, `kafka/prod`).
+- The wrapping always produces a flow-style sequence (`[value]`), matching the scalar inline style.
+- In comment blocks the key is renamed but the value is not wrapped (the comment text advises the user).
+
 #### Wildcards in paths
 
 Use `*` to match all direct children at a level. The wildcard position is

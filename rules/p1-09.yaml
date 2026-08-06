@@ -16,16 +16,27 @@ look_for:
     match: exists
     in_comments: true
 migration:
-  strategy: guided
+  strategy: auto
   key_moves:
+    # Rename scalar topic: to list topics: [value], preserving the topic name.
+    - from: $.receivers.kafka.topic
+      to: $.receivers.kafka.topics
+      wrap_as_sequence: true
+    # Rename scalar exclude_topic: to list exclude_topics: [value].
+    - from: $.receivers.kafka.exclude_topic
+      to: $.receivers.kafka.exclude_topics
+      wrap_as_sequence: true
+    # Delete default_fetch_size — it causes startup failure and requires a unit-change
+    # to Franz-go's max_fetch_size (user must provide the value in MiB).
+    - from: $.receivers.kafka.default_fetch_size
+      to: ""
     - comment_path: $.receivers.kafka
+      comment_once: true
       comment_text: |
-        # UPGRADE(P1-09 v0.147): kafka receiver topic/exclude_topic/default_fetch_size removed.
+        # UPGRADE(P1-09 v0.147): kafka receiver removed topic/exclude_topic/default_fetch_size.
         # Collector fails to start if these keys are present.
-        # ACTION: topic → topics: [list], exclude_topic → exclude_topics: [list],
-        # default_fetch_size → max_fetch_size (Franz-go, e.g. 50MiB).
-        exclude_topic: bad-topic
-        default_fetch_size: 1048576
+        # topic and exclude_topic were auto-renamed to topics/exclude_topics (list form) above.
+        # default_fetch_size was removed — if needed, add: max_fetch_size: 50MiB (Franz-go field).
   after: |
     receivers:
       kafka:

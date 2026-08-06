@@ -18,19 +18,20 @@ look_for:
     match: exists
     in_comments: true
 migration:
-  strategy: guided
+  strategy: auto
   key_moves:
-    - comment_path: $.receivers.kafka
-      comment_text: |
-        # UPGRADE(P2-29 v0.124): kafka auth.tls is deprecated → move to top-level tls: block.
-        # Before: auth.tls.ca_file / cert_file / key_file
-        # After:  tls.ca_file / cert_file / key_file (direct under receiver, not under auth)
-        # ACTION: move all auth.tls keys up one level to a sibling tls: block.
-    - comment_path: $.exporters.kafka
-      comment_text: |
-        # UPGRADE(P2-29 v0.124): kafka auth.tls is deprecated → move to top-level tls: block.
-        # Before: auth.tls.insecure_skip_verify / cert_file / ...
-        # After:  tls.insecure_skip_verify / cert_file / ...  (sibling of auth, not nested inside it)
+    # Move auth.tls block to top-level tls: for the kafka receiver (handles named instances).
+    - from: $.receivers.kafka.auth.tls
+      to: $.receivers.kafka.tls
+    # Move auth.tls block to top-level tls: for the kafka exporter.
+    - from: $.exporters.kafka.auth.tls
+      to: $.exporters.kafka.tls
+    # Move auth.tls block to top-level tls: for the kafkametrics receiver.
+    - from: $.receivers.kafkametrics.auth.tls
+      to: $.receivers.kafkametrics.tls
+    # Move auth.tls block to top-level tls: for the kafka_metrics receiver (legacy alias).
+    - from: $.receivers.kafka_metrics.auth.tls
+      to: $.receivers.kafka_metrics.tls
   before: |
     receivers:
       kafka:

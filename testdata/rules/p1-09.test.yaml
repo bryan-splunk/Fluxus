@@ -1,27 +1,42 @@
 cases:
-  - name: "fires when kafka receiver has topic field"
+  - name: "fires when kafka receiver has topic field — renamed to topics list"
     config: |
       receivers:
         kafka:
           brokers: [kafka:9092]
           topic: otel-spans
     should_fire: true
+    apply_contains:
+      - "topics:"
+      - "otel-spans"
+      - "P1-09 v0.147"
+    apply_not_contains:
+      - "topic: otel-spans"
 
-  - name: "fires when kafka receiver has exclude_topic field"
+  - name: "fires when kafka receiver has exclude_topic field — renamed to exclude_topics list"
     config: |
       receivers:
         kafka:
           brokers: [kafka:9092]
           exclude_topic: internal-.*
     should_fire: true
+    apply_contains:
+      - "exclude_topics:"
+      - "internal-.*"
+    apply_not_contains:
+      - "exclude_topic: internal-.*"
 
-  - name: "fires when kafka receiver has default_fetch_size"
+  - name: "fires when kafka receiver has default_fetch_size — deleted with comment guidance"
     config: |
       receivers:
         kafka:
           brokers: [kafka:9092]
           default_fetch_size: 1048576
     should_fire: true
+    apply_contains:
+      - "max_fetch_size"
+    apply_not_contains:
+      - "default_fetch_size:"
 
   - name: "silent when kafka receiver has none of the removed fields"
     config: |

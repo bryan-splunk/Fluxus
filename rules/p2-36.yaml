@@ -9,16 +9,12 @@ look_for:
     match: exists
     in_comments: true
 migration:
-  strategy: guided
+  strategy: auto
   key_moves:
-    # Inject a comment on the kafka receiver so the user knows to rename and wrap the value.
-    - comment_path: $.receivers.kafka
-      comment_once: true
-      comment_text: |
-        # UPGRADE(P2-36 v0.154): group_rebalance_strategy deprecated → group_rebalance_strategies.
-        # ACTION: Rename group_rebalance_strategy: to group_rebalance_strategies: and wrap the
-        # value in a YAML sequence. Example: group_rebalance_strategies: [sticky]
-        # Setting both fields simultaneously causes a startup validation failure.
+    # Rename and wrap the scalar value in a single-item sequence (handles named instances).
+    - from: $.receivers.kafka.group_rebalance_strategy
+      to: $.receivers.kafka.group_rebalance_strategies
+      wrap_as_sequence: true
   before: |
     receivers:
       kafka:

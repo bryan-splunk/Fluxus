@@ -9,14 +9,20 @@ look_for:
     match: exists
     in_comments: true
 migration:
-  strategy: guided
+  strategy: auto
   key_moves:
-    - comment_path: $.receivers.jmx
-      comment_once: true
+    # Delete the jmx receiver definition — it is no longer in the Splunk distribution.
+    - from: $.receivers.jmx
+      to: ""
+    # Remove 'jmx' from every pipeline receiver array (stale reference after deletion).
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: jmx
+      new_value: ""
+    # Inject upgrade guidance on the service.pipelines section (survives jmx deletion).
+    - comment_path: $.service.pipelines
       comment_text: |
         # [P1-31 UPGRADE v0.157] jmx receiver REMOVED from Splunk OTel Collector distribution.
-        # The upstream jmx receiver has been deprecated and removed. The bundled JMX Metrics
-        # Gatherer JAR is also no longer included in Docker images, MSI, DEB, RPM, and tar packages.
+        # The jmx receiver block and pipeline references have been removed automatically.
         # ACTION: Migrate to the standalone 'jmx-scraper' tool from opentelemetry-java-contrib.
         # Configure jmx-scraper to push metrics via OTLP to this collector's otlp receiver.
         # Example jmx-scraper invocation (Cassandra):

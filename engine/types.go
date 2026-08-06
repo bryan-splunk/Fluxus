@@ -140,6 +140,31 @@ type KeyMove struct {
 	//   default:        ignore
 	//   inject_at_each: true
 	InjectAtEach bool `yaml:"inject_at_each,omitempty"`
+
+	// Sequence map-item delete: finds all mapping items in the sequence at
+	// SequenceMapPath where MatchKey == MatchValue and removes them.
+	// The path must resolve to a YAML sequence whose items are mappings.
+	// Named-instance matching (e.g. $.receivers.smartagent covering
+	// smartagent/windows etc.) is handled automatically by the YAMLPath evaluator.
+	//
+	// Example — remove the type:jmx entry from the smartagent monitors list:
+	//   sequence_map_path: $.receivers.smartagent.monitors
+	//   match_key:         type
+	//   match_value:       jmx
+	SequenceMapPath string `yaml:"sequence_map_path,omitempty"`
+	MatchKey        string `yaml:"match_key,omitempty"`
+	MatchValue      string `yaml:"match_value,omitempty"`
+
+	// WrapAsSequence, when true on a from→to move, wraps the moved scalar value
+	// inside a new single-item YAML sequence at the destination path.
+	// Use to rename a scalar field to a list field while preserving the value.
+	//
+	// Example — rename group_rebalance_strategy: sticky
+	//                 to group_rebalance_strategies: [sticky]:
+	//   from:             $.receivers.kafka.group_rebalance_strategy
+	//   to:               $.receivers.kafka.group_rebalance_strategies
+	//   wrap_as_sequence: true
+	WrapAsSequence bool `yaml:"wrap_as_sequence,omitempty"`
 }
 
 // Migration holds migration guidance and optional automated key moves.

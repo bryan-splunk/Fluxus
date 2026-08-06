@@ -8,21 +8,26 @@ look_for:
   - raw_pattern: "(?m)type:\\s+hana\\s*$"
 logic: and
 migration:
-  strategy: guided
+  strategy: auto
   key_moves:
+    # Remove the type:hana entry from the smartagent monitors list (handles named instances).
+    - sequence_map_path: $.receivers.smartagent.monitors
+      match_key: type
+      match_value: hana
+    # Inject a saphana receiver skeleton if absent — user fills in endpoint, username, password.
+    - to: $.receivers.saphana
+      default: |
+        endpoint: localhost:39041
+        username: monitoring_user
+        password: "${env:HANA_PASSWORD}"
+        collection_interval: 60s
     - comment_path: $.receivers.smartagent
       comment_once: true
       comment_text: |
         # [P1-29 UPGRADE v0.154] Smart Agent hana monitor REMOVED.
-        # ACTION: Migrate to the 'saphana' receiver from opentelemetry-collector-contrib.
-        # For custom SAP HANA queries, also use the 'sqlquery' receiver.
-        # Example saphana receiver config:
-        #   receivers:
-        #     saphana:
-        #       endpoint: localhost:39041
-        #       username: monitoring_user
-        #       password: "${env:HANA_PASSWORD}"
-        #       collection_interval: 60s
+        # The hana monitor entry has been removed from the monitors list above.
+        # A saphana receiver skeleton has been injected — update endpoint, username, password.
+        # For custom SAP HANA queries, also configure the 'sqlquery' receiver.
         # See: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/saphanareceiver
   before: |
     extensions:

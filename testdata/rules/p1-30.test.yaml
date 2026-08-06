@@ -14,6 +14,10 @@ cases:
     apply_contains:
       - "P1-30 UPGRADE v0.155"
       - "CORRECT migration path"
+      - "otlp:"
+    apply_not_contains:
+      - "type: signalfx-forwarder"
+      - "listenAddress:"
 
   - name: "fires when smartagent receiver has trace-forwarder monitor"
     config: |
@@ -29,8 +33,12 @@ cases:
     should_fire: true
     apply_contains:
       - "P1-30 UPGRADE v0.155"
+      - "otlp:"
+    apply_not_contains:
+      - "type: trace-forwarder"
+      - "defaultSpanEndpointURL:"
 
-  - name: "fires when both forwarder monitor types present"
+  - name: "fires when both forwarder monitor types present — both removed"
     config: |
       receivers:
         smartagent:
@@ -40,6 +48,9 @@ cases:
             - type: trace-forwarder
               defaultSpanEndpointURL: http://gateway:9943/v1/trace
     should_fire: true
+    apply_not_contains:
+      - "type: signalfx-forwarder"
+      - "type: trace-forwarder"
 
   - name: "silent when smartagent has no forwarder monitors"
     config: |
