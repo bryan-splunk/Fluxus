@@ -6,7 +6,7 @@ Welcome. This document gets you up to speed on the project so you can continue d
 
 ## What This Project Is
 
-A standalone Go application that automates upgrading Splunk OpenTelemetry Collector YAML configuration files across breaking-change versions (currently v0.120 → v0.153). It replaces a Cursor AI Skill with a proper CLI + web app.
+A standalone Go application that automates upgrading Splunk OpenTelemetry Collector YAML configuration files across breaking-change versions (currently v0.120 → v0.157). It replaces a Cursor AI Skill with a proper CLI + web app.
 
 **The problem it solves:** The Splunk OTel Collector releases every ~2 weeks. Each release contains breaking changes that require YAML config edits. Without tooling, upgrading a fleet of collector configs is manual, error-prone, and slow.
 
@@ -20,7 +20,7 @@ Collector upgRAde Process/
 ├── AGENTS.md                 ← This file
 ├── go.mod / go.sum           ← Go module (module: github.com/bryan-splunk/fluxus)
 │
-├── rules/                    ← upgrade rule store (B-xx, C-xx, I-xx, CA-xx; ~75 files)
+├── rules/                    ← upgrade rule store (B-xx, C-xx, I-xx, CA-xx; ~93 files)
 │   ├── README.md             ← AUTHORITATIVE rule authoring guide — read before editing rules
 │   ├── p1-01.yaml             ← naming: {id-lowercase}.yaml
 │   ├── ...
@@ -57,7 +57,7 @@ Collector upgRAde Process/
 │   │   ├── p2-01.test.yaml    ← One file per rule, named <rule-id>.test.yaml
 │   │   ├── p3-01.test.yaml
 │   │   ├── sec-p1-01.test.yaml
-│   │   └── ... (78 total — one for every rule in rules/ and rules/security/)
+│   │   └── ... (96 total — one for every rule in rules/ and rules/security/)
 │   ├── agent-sample.yaml
 │   └── gateway-sample.yaml
 │
@@ -276,7 +276,7 @@ Both `assess` and `apply` accept exact file paths, a directory, a glob pattern, 
 
 ## Per-Rule Test Fixtures
 
-All 78 rules have a companion fixture file at `testdata/rules/<rule-id>.test.yaml`.
+All 96 rules have a companion fixture file at `testdata/rules/<rule-id>.test.yaml`.
 The `TestRuleFixtures` function in `engine/engine_test.go` auto-discovers and runs them.
 
 ### Fixture file format
@@ -344,7 +344,7 @@ go build -o fluxus.exe ./cmd/cli
 # Build web server binary
 go build -o fluxus-server.exe ./cmd/server
 
-# Run all tests (engine unit tests + all 78 rule fixture tests)
+# Run all tests (engine unit tests + all 96 rule fixture tests)
 go test ./...
 
 # Run all tests in a specific package
@@ -420,10 +420,13 @@ Current ranges:
 |-------|----------|-------|
 | P1-01 … P1-20 | P1 — former P1-01…P1-20 + P1-05 | 20 |
 | P1-21 … P1-26 | P1 — former P1-21…P1-26 | 6 |
+| P1-27 … P1-32 | P1 — v0.153–v0.157 additions | 6 |
 | P2-01 … P2-18 | P2 — former P2-01…P2-18 | 18 |
 | P2-19 … P2-35 | P2 — former P2-19…P2-35 | 17 |
+| P2-36 … P2-43 | P2 — v0.154–v0.157 additions | 8 |
 | P3-01 … P3-10 | P3 — former P3-01…P3-10 | 10 |
 | P3-11 … P3-14 | P3 — former P3-11…P3-14 | 4 |
+| P3-15 … P3-18 | P3 — v0.154–v0.157 additions | 4 |
 | SEC-P1-01 … SEC-P1-03 | Security P1 | 3 |
 
 ### Go constants
@@ -456,7 +459,7 @@ PhasePost     Phase = "post"            // was PhasePostAssess ("post_assessment
 ## Current Status
 
 All four phases are complete:
-- Phase 1: All ~75 rules converted to `rules/*.yaml` files + 3 security rules in `rules/security/`
+- Phase 1: All ~93 rules converted to `rules/*.yaml` files + 3 security rules in `rules/security/`
 - Phase 2: Full `engine/` package implemented, including:
   - YAMLPath evaluation with named instance support (`kafka/consumer` matches `$.receivers.kafka`)
   - `match: absent` fully working
@@ -478,7 +481,7 @@ All four phases are complete:
   - `guided` and `inform_only` strategy flags
   - Multi-phase rule loading via `LoadRulesTree` — loads config rules (root) + all subdirectory phases (security, pipeline, etc.)
   - `Phase` field on `Rule` struct — stamped from subdirectory name when loading
-  - **Per-rule data-driven test framework** — `TestRuleFixtures` in `engine_test.go` auto-discovers `testdata/rules/*.test.yaml` and runs each case as a named sub-test; 78 fixture files covering all rules with positive, negative, and apply-output checks
+  - **Per-rule data-driven test framework** — `TestRuleFixtures` in `engine_test.go` auto-discovers `testdata/rules/*.test.yaml` and runs each case as a named sub-test; 96 fixture files covering all rules with positive, negative, and apply-output checks
 - Phase 3: CLI (`cmd/cli/`) implemented with cobra; `--output-dir` on both assess and apply
 - Phase 4: Web server (`cmd/server/`) + frontend (`web/index.html`) implemented
 
@@ -509,6 +512,6 @@ DONE with the commit/PR that closed them.
 - The repo is at `https://github.com/bryan-splunk/Fluxus.git`
 - JetBrains GoLand is the primary IDE for direct coding and debugging; **Cursor** is used alongside it to run the AI agent (which benefits from full workspace access)
 - The `Skill/UPGRADE-KNOWLEDGE.md` is the authoritative source for rule content — if a rule file and UPGRADE-KNOWLEDGE.md disagree, UPGRADE-KNOWLEDGE.md wins
-- Version range covered: v0.120 → v0.153 (75 config rules total: 26 P1, 35 P2, 14 P3 — plus 3 SEC-P1 security rules)
+- Version range covered: v0.120 → v0.157 (93 config rules total: 32 P1, 43 P2, 18 P3 — plus 3 SEC-P1 security rules)
 - Do NOT modify `splunk-otel-upgrade-guide.html` or `.canvas.tsx` as part of app development — those are the standalone reference guide, not part of the app
 - Report templates are in `engine/templates/` (`.tmpl` files) and embedded at compile time via `//go:embed` in `engine/reporter.go` — edit the `.tmpl` files directly, no Go string escaping needed

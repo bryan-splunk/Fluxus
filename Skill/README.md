@@ -1,6 +1,8 @@
 ﻿# Collector-upgRAde-Process
 
-A Cursor Agent Skill that upgrades Splunk OpenTelemetry Collector configuration files from **v0.120 ? v0.153**.
+> **Note:** This Skill covers v0.120 → v0.153. For v0.154 and later, use the FLUXUS CLI (`fluxus assess` / `fluxus apply`) which is updated through v0.157.
+
+A Cursor Agent Skill that upgrades Splunk OpenTelemetry Collector configuration files from **v0.120 → v0.153**.
 
 Given one or more collector YAML configs, the skill first performs a **Pre-Assessment** ? scanning
 each file for applicable changes in both **active** and **commented-out** config items, identifying
@@ -129,7 +131,7 @@ touching anything.
 
 ---
 
-## What the Skill Knows (v0.120 ? v0.153)
+## What the Skill Knows (v0.120 → v0.157)
 
 ### Impact Categories
 
@@ -139,7 +141,7 @@ touching anything.
 | 🟡 **P2 Degrading** | Config change, planning, or operational action required |
 | 🔵 **P3 Advisory** | No immediate failure; cleanup / informational only |
 
-### P1 Breaking Changes (26 total ? P1-01 through P1-26)
+### P1 Breaking Changes (32 total — P1-01 through P1-32)
 
 | Code | Change | Version |
 |------|--------|---------|
@@ -168,9 +170,15 @@ touching anything.
 | P1-17 | FluentD permanently removed from all Splunk installers | 0.144?0.145 |
 | P1-18 | `resourcedetection` processor `attributes:` field removed | 0.142 |
 | P1-19 | `mysql`/`postgresql` query collection defaults changed to off | 0.148 |
-| P1-20 | `sending_queue::blocking` field removed ? use `block_on_overflow` | 0.129 |
+| P1-20 | `sending_queue::blocking` field removed → use `block_on_overflow` | 0.129 |
+| P1-27 | Smart Agent extension `bundleDir` and `collectd:` block removed | 0.154 |
+| P1-28 | Smart Agent `jmx` monitor removed — migrate to `jmx` receiver | 0.154 |
+| P1-29 | Smart Agent `hana` monitor removed — migrate to `saphana`/`sqlquery` receivers | 0.154 |
+| P1-30 | Smart Agent `signalfx-forwarder` and `trace-forwarder` monitors removed — migrate to OTLP receiver | 0.155 |
+| P1-31 | `jmx` receiver removed from Splunk distribution — migrate to standalone `jmx-scraper` | 0.157 |
+| P1-32 | `filter`/`transform` `defaultErrorModeIgnore` gates promoted to stable — revert flag fails startup | 0.157 |
 
-### P2 Degrading Changes (35 total ? P2-01 through P2-35)
+### P2 Degrading Changes (43 total — P2-01 through P2-43)
 
 | Code | Change | Version |
 |------|--------|---------|
@@ -207,9 +215,17 @@ touching anything.
 | P2-15 | IIS application pool metrics enabled by default | 0.131 |
 | P2-16 | Windows MSI download URL changed | 0.151 |
 | P2-17 | Internal metrics `service_name`/`service_instance_id`/`service_version` labels removed | 0.149 |
-| P2-18 | prometheus receiver resource attributes renamed: `net.host.name` ? `server.address` etc. | 0.126 |
+| P2-18 | prometheus receiver resource attributes renamed: `net.host.name` → `server.address` etc. | 0.126 |
+| P2-36 | kafka receiver `group_rebalance_strategy` deprecated — use `group_rebalance_strategies:` | 0.154 |
+| P2-37 | `memory_limiter` internal metrics renamed with `otelcol_processor_memory_limiter_` prefix | 0.155 |
+| P2-38 | `oracledb` receiver `db.namespace` attribute semantic changed | 0.155 |
+| P2-39 | `signalfx` exporter per-core CPU metrics removed from default translations | 0.155 |
+| P2-40 | `oracledb` receiver requires new `V$SQL_PLAN_STATISTICS_ALL` privilege | 0.156 |
+| P2-41 | `prometheus` receiver `IgnoreScopeInfoMetric` gate to beta — `otel_scope_info` metrics suppressed by default | 0.156 |
+| P2-42 | `host_metrics` cpu scraper: per-core data points now opt-in; `system.cpu.logical.count` added by default | 0.157 |
+| P2-43 | routing connector default `error_mode` changed to `ignore` | 0.157 |
 
-### P3 Advisory Changes (14 total ? P3-01 through P3-14)
+### P3 Advisory Changes (18 total — P3-01 through P3-18)
 
 | Code | Change | Version |
 |------|--------|---------|
@@ -227,6 +243,10 @@ touching anything.
 | P3-08 | `splunk_otlp_histograms` converter removed | 0.148 |
 | P3-09 | New OTTL functions available (Coalesce, Base64Encode, IsInCIDR, etc.) | 0.126+ |
 | P3-10 | `truncate_all` OTTL function now UTF-8 safe by default | 0.148 |
+| P3-15 | `resourcedetection` `k8snode` detector renamed to `k8s_api` | 0.154 |
+| P3-16 | `signalfx` exporter trace functionality deprecated (removal December 2026) | 0.154 |
+| P3-17 | Splunk `timestamp` processor deprecated — migrate to OTTL `transform` | 0.156 |
+| P3-18 | routing connector `request` context and `request["key"]` syntax deprecated | 0.156 |
 
 ---
 

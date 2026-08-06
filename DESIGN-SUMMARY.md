@@ -17,7 +17,7 @@ State(0.120)
   → Tick 0.121: evaluate rules → collect effects → apply → State(0.121)
   → Tick 0.122: evaluate rules → collect effects → apply → State(0.122)
   → ...
-  → Tick 0.153: evaluate rules → collect effects → apply → State(0.153)
+  → Tick 0.157: evaluate rules → collect effects → apply → State(0.157)
 ```
 
 ---
@@ -202,11 +202,11 @@ Fluxus/
 ├── go.mod                        ← Go module definition
 ├── go.sum                        ← dependency checksums
 │
-├── rules/                        ← upgrade rule store (B-xx, C-xx, I-xx, CA-xx; ~75 files)
+├── rules/                        ← upgrade rule store (B-xx, C-xx, I-xx, CA-xx; ~93 files)
 │   ├── README.md                 ← AUTHORITATIVE rule authoring guide
 │   ├── c-19.yaml                 ← example: Critical sending_queue::blocking removed
 │   ├── i-01.yaml                 ← example: Involved kafka receiver client_id inject
-│   ├── ...                       ← ~75 total upgrade rule files
+│   ├── ...                       ← ~93 total upgrade rule files
 │   └── security/                 ← security phase rules (SEC-xx — evergreen, all versions)
 │       ├── README.md             ← security rules authoring guide
 │       ├── sec-01.yaml           ← prometheus scrape_config hardcoded password
@@ -242,7 +242,7 @@ Fluxus/
 │
 ├── testdata/                     ← test data
 │   ├── rules/                    ← per-rule fixture files (data-driven tests)
-│   │   └── <rule-id>.test.yaml   ← 78 files, one per rule
+│   │   └── <rule-id>.test.yaml   ← 96 files, one per rule
 │   ├── agent-sample.yaml
 │   └── gateway-sample.yaml
 │
@@ -388,7 +388,7 @@ fluxus server [flags]
 
 ### Per-rule fixtures (`TestRuleFixtures`)
 
-`TestRuleFixtures` auto-discovers `testdata/rules/*.test.yaml` (78 files, one per rule) and runs each case as `t.Run(ruleID / caseName)`.
+`TestRuleFixtures` auto-discovers `testdata/rules/*.test.yaml` (96 files, one per rule) and runs each case as `t.Run(ruleID / caseName)`.
 
 Each fixture specifies:
 - `config` — minimal inline YAML that should (or should not) trigger the rule

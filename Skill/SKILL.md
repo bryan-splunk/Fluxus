@@ -1,6 +1,7 @@
 ---
 name: splunk-otel-upgrade
 description: >-
+  NOTE: This Skill covers v0.120–v0.153. For v0.154 and later, use the FLUXUS CLI (fluxus assess / fluxus apply) which is updated through v0.157.
   Upgrades Splunk OpenTelemetry Collector configuration files covering the v0.120–v0.153 change
   catalogue. Performs a Pre-Assessment scan of both active and commented-out config items against
   ALL known changes, then splits results into two buckets — changes within the user's target

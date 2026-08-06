@@ -1,0 +1,116 @@
+---
+description: Require documentation updates in every plan and change
+globs: "**/*"
+alwaysApply: true
+---
+
+# Documentation Update Policy
+
+Every plan and every implementation MUST include an explicit step to update documentation.
+This project carries more living documents than most — each serves a distinct audience (users,
+operators, AI agents, rule authors, or skill users) and all must stay in sync.
+
+---
+
+## Document Registry
+
+| Document | Audience | Update when… |
+|---|---|---|
+| `AGENTS.md` | AI agents onboarding this project | Files added/moved/removed; build commands change; new engine capabilities; new concepts/vocabulary; phase or status changes |
+| `README.md` | End users / developers | User-facing behavior, CLI flags, build commands, repo structure, or version range coverage changes |
+| `DESIGN-SUMMARY.md` | Contributors / architects | Architecture decisions, patterns, or core data types change |
+| `RELEASE-INTAKE.md` | Rule authors ingesting new versions | Intake process, fixture format, or any step in the runbook changes |
+| `rules/README.md` | Rule authors | Rule schema gains/loses fields; new `match`, `strategy`, or `key_move` operations added; authoring patterns change; fixture format changes |
+| `rules/security/README.md` | Security rule authors | Security rule patterns, `raw_pattern` guidance, or `SEC-xx` authoring conventions change |
+| `Skill/UPGRADE-KNOWLEDGE.md` | Skill users, rule authors | **Required for every new rule** — add the corresponding `### P1-NN · …` entry; update the header version range when a new collector release is ingested |
+| `Skill/SKILL.md` | Skill users (AI agents following the workflow) | Workflow steps, output filenames, or report sections change |
+| `Skill/README.md` | Skill users (humans installing / invoking the skill) | Usage instructions, selection options, version range, or output descriptions change |
+| `Skill/TEMPLATES.md` | Skill output format consumers | PreAssessment, Data Path Assessment, per-file README, or Operational Assessment formats change |
+| `Skill/DATA-PATH-KNOWLEDGE.md` | Skill users running data-path analysis | Data path steps, golden paths, or anti-pattern catalogue (PATH-xx / PROP1-xx) changes |
+| `engine/templates/*.tmpl` | Report consumers (CLI / server output) | Report structure, section headings, or summary counts change (these are embedded at compile time via `//go:embed`) |
+| `splunk-otel-upgrade-guide.html` | Browser users, team members | Version range and rule tables updated when a new collector release is ingested — follow `HOWTO-UPDATE-HTML.md`. **Never modify for code or engine changes.** |
+
+---
+
+## Rules for Every Collector Release Intake
+
+When following `RELEASE-INTAKE.md` to add rules for a new version, the following documents
+**always** require updates — no exceptions:
+
+1. **`Skill/UPGRADE-KNOWLEDGE.md`** — add `### P1-NN · …` / `P2-NN · …` / `P3-NN · …` entries in
+   the correct priority section; update the header line version range (e.g. `v0.120 → v0.154`).
+2. **`AGENTS.md`** — update the version range in the "Current Status" section and the rule count
+   table (`P1-01 … P1-NN`, `P2-01 … P2-NN`, `P3-01 … P3-NN`).
+3. **`README.md`** — update the "Versions covered" block and any "highest-impact changes at a
+   glance" if the new release adds a significant breaking change.
+
+The following document requires an update **only when Skill files were also changed** in the
+same intake (i.e. `Skill/UPGRADE-KNOWLEDGE.md`, `Skill/SKILL.md`, `Skill/TEMPLATES.md`, or
+`Skill/DATA-PATH-KNOWLEDGE.md` were modified):
+
+4. **`Skill/README.md`** — update the "What the Skill Knows" version range header and the P1 / P2
+   / P3 rule count headers and table rows to match the Skill's updated coverage. If only Go engine
+   rules were added without touching any Skill file, `Skill/README.md` does not need updating.
+
+### `splunk-otel-upgrade-guide.html` — update via HOWTO
+
+The standalone HTML reference guide has its own dedicated update runbook at
+`HOWTO-UPDATE-HTML.md`. Follow that document when updating the HTML guide after a new release.
+Do **not** modify this file as part of engine code or rule schema changes — it is a reference
+artifact, not a component of the tool.
+
+---
+
+## When Creating a Plan
+
+Add a dedicated todo item:
+
+> "Update docs: identify and update all affected documents from the doc registry"
+
+Place it as the **last todo** so it is completed after implementation is verified.
+
+---
+
+## When Implementing
+
+Do not mark implementation todos as complete until the documentation task is also complete.
+
+---
+
+## What Counts as a Documentation Update
+
+- Correcting stale file paths, command examples, or dependency references.
+- Adding a new rule entry to `Skill/UPGRADE-KNOWLEDGE.md`.
+- Updating version range headers in `AGENTS.md`, `README.md`, `Skill/README.md`,
+  `Skill/UPGRADE-KNOWLEDGE.md`, and `splunk-otel-upgrade-guide.html`.
+- Updating the repository layout tree in `AGENTS.md` when files are added, removed, or moved.
+- Adding or updating rule counts or range tables (`P1-01 … P1-NN`) in `AGENTS.md` or
+  `Skill/README.md`.
+- Updating build commands or GoLand setup steps when the invocation changes.
+- Adding a new domain vocabulary term or engine capability when a new concept is introduced.
+- Updating `RELEASE-INTAKE.md` when the intake runbook steps change.
+- Updating `rules/README.md` or `rules/security/README.md` when the rule YAML schema changes.
+- Updating `engine/templates/*.tmpl` when the rendered report format changes.
+- Updating `Skill/SKILL.md` or `Skill/TEMPLATES.md` when the skill workflow or output changes.
+- Updating the Comment-Processing Gap Tracker table in `AGENTS.md` when a gap is resolved or
+  a new gap is discovered.
+
+---
+
+## What Does NOT Require a Documentation Update
+
+- Pure bug fixes with no change to the user-visible interface, project structure, or rule schema.
+- Internal refactors that do not change any public API, CLI flags, file layout, or rule fields.
+- Adding a new test case to an existing fixture file when the rule itself is unchanged.
+- Changes to `testdata/` sample configs that do not change any documented behaviour.
+
+---
+
+## Do NOT Modify These Files as Part of Code Changes
+
+- `splunk-otel-upgrade-guide.html` — standalone reference guide; update only when adding a new
+  collector release, following `HOWTO-UPDATE-HTML.md`. Never modify for engine refactors, CLI
+  changes, or rule schema changes.
+- `splunk-otel-upgrade-guide.canvas.tsx` — standalone canvas reference; same restriction.
+
+When in doubt, update the docs.

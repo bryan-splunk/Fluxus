@@ -1,6 +1,6 @@
-# Splunk OpenTelemetry Collector — Upgrade Guide (v0.120.0 → v0.153.0)
+# Splunk OpenTelemetry Collector — Upgrade Guide (v0.120.0 → v0.157.0)
 
-A comprehensive utility, AI Skill, and reference guide covering every **breaking change** and **deprecation** for the Splunk OpenTelemetry Collector v0.120.0 and v0.153.0.
+A comprehensive utility, AI Skill, and reference guide covering every **breaking change** and **deprecation** for the Splunk OpenTelemetry Collector v0.120.0 through v0.157.0.
 
 The project now provides three ways to consume this knowledge, depending on your workflow:
 
@@ -159,7 +159,7 @@ The guide is organised into eight topic sections:
 
 | Section | Content |
 |---|---|
-| **Overview** | Release-by-release summary table, v0.120 → v0.153 |
+| **Overview** | Release-by-release summary table, v0.120 → v0.157 |
 | **Component Renames** | ~30 snake_case renames (e.g. `filelog` → `file_log`) |
 | **Kafka Migration** | Sarama → Franz-go: removed keys, client ID change, encoding renames, metadata_keys |
 | **Processors** | filter/transform error_mode, k8s_attributes semconv gates, cumulativetodelta staleness, tail_sampling |
@@ -175,7 +175,7 @@ The guide is organised into eight topic sections:
 0.120 · 0.121 · 0.122 · 0.123 · 0.124 · 0.125 · 0.126 · 0.127 · 0.128 · 0.129
 0.130 · 0.131 · 0.132 · 0.134 · 0.135 · 0.136 · 0.137 · 0.138 · 0.139 · 0.140
 0.141 · 0.142 · 0.143 · 0.144 · 0.145 · 0.146 · 0.147 · 0.148 · 0.149 · 0.150
-0.151 · 0.152 · 0.153
+0.151 · 0.152 · 0.153 · 0.154 · 0.155 · 0.156 · 0.157
 ```
 
 ---
@@ -201,6 +201,9 @@ Changes most likely to cause silent failures or data loss:
 - **0.150** — OTTL setters return errors for type mismatches (previously silent no-ops)
 - **0.151** — SignalFx default URLs changed to `*.observability.splunkcloud.com`; Windows MSI URL changed
 - **0.153** — `filter`/`transform` processors default to `error_mode: ignore`; **`signalfx` receiver permanently removed**
+- **0.154** — Smart Agent `jmx` and `hana` monitors removed (startup failure; migrate to `jmx` receiver and `saphana`/`sqlquery` receivers); `collectd` block and `bundleDir` removed from Smart Agent extension
+- **0.155** — Smart Agent `signalfx-forwarder` and `trace-forwarder` monitors removed (**migrate to OTLP receiver** — `signalfxreceiver` was removed in 0.153 and is not a valid migration target)
+- **0.157** — `jmx` receiver removed from Splunk distribution (migrate to standalone `jmx-scraper`); `filter`/`transform` `defaultErrorModeIgnore` feature gate stabilized (remove the flag and add explicit `error_mode: propagate` to affected processors)
 
 ---
 
