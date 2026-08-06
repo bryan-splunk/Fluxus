@@ -22,7 +22,7 @@ cases:
       - "host: localhost"
       - "serviceURL:"
 
-  - name: "fires when multiple monitors include jmx — only jmx removed, cpu stays"
+  - name: "fires when multiple monitors include jmx — only jmx removed, cpu stays, jmx wired into pipeline"
     config: |
       receivers:
         smartagent:
@@ -34,11 +34,14 @@ cases:
       service:
         pipelines:
           metrics:
-            receivers: [smartagent]
+            receivers:
+              - smartagent
     should_fire: true
     apply_contains:
       - "type: cpu"
       - "jar_path:"
+      - "- smartagent"
+      - "- jmx"
     apply_not_contains:
       - "type: jmx"
 

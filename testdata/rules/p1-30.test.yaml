@@ -1,5 +1,5 @@
 cases:
-  - name: "fires when smartagent receiver has signalfx-forwarder monitor"
+  - name: "fires when smartagent receiver has signalfx-forwarder monitor — otlp wired into pipeline"
     config: |
       receivers:
         smartagent:
@@ -9,12 +9,15 @@ cases:
       service:
         pipelines:
           metrics:
-            receivers: [smartagent]
+            receivers:
+              - smartagent
     should_fire: true
     apply_contains:
       - "P1-30 UPGRADE v0.155"
       - "CORRECT migration path"
       - "otlp:"
+      - "- smartagent"
+      - "- otlp"
     apply_not_contains:
       - "type: signalfx-forwarder"
       - "listenAddress:"

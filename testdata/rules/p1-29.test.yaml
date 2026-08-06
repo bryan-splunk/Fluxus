@@ -22,7 +22,7 @@ cases:
       - "type: hana"
       - "host: hana-host"
 
-  - name: "fires when hana is among multiple monitors — only hana removed, cpu stays"
+  - name: "fires when hana is among multiple monitors — only hana removed, cpu stays, saphana wired into pipeline"
     config: |
       receivers:
         smartagent:
@@ -31,9 +31,16 @@ cases:
             - type: hana
               host: hana-host
               port: 39041
+      service:
+        pipelines:
+          metrics:
+            receivers:
+              - smartagent
     should_fire: true
     apply_contains:
       - "type: cpu"
+      - "- smartagent"
+      - "- saphana"
     apply_not_contains:
       - "type: hana"
 

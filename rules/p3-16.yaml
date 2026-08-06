@@ -9,7 +9,7 @@ look_for:
     match: exists
 logic: and
 migration:
-  strategy: inform_only
+  strategy: guided
   key_moves:
     - comment_path: $.exporters.signalfx
       comment_once: true
@@ -19,6 +19,12 @@ migration:
         # Sending traces via OTLP is now sufficient to enable trace correlation.
         # All trace functionality and configuration will be REMOVED from this exporter in December 2026.
         # ACTION: Remove signalfx from any trace pipelines and send traces via OTLP exporter only.
+    # Reported (not auto-applied): remove signalfx from traces-type pipeline exporters.
+    # Strategy is guided because the user must also add an otlp exporter for traces first.
+    # Named-instance matching targets traces, traces/prod, traces/otlp, etc. but not metrics/logs.
+    - sequence_path: $.service.pipelines.traces.exporters
+      old_value: signalfx
+      new_value: ""
   before: |
     exporters:
       signalfx:

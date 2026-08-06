@@ -8,17 +8,18 @@ look_for:
   - path: $.receivers.kafka_metrics
     match: exists
 migration:
-  strategy: guided
+  strategy: auto
   key_moves:
-    - comment_path: $.receivers.kafkametrics
-      comment_text: |
-        # UPGRADE(P2-03 v0.152): kafka_metrics — Sarama client removed, Franz-go is now mandatory.
-        # Remove --feature-gates=+receiver.kafkametricsreceiver.UseFranzGo from startup if present.
-        # Rename kafkametrics → kafka_metrics (canonical name; alias removed in future release).
+    - from: $.receivers.kafkametrics
+      to:   $.receivers.kafka_metrics
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: kafkametrics
+      new_value: kafka_metrics
     - comment_path: $.receivers.kafka_metrics
       comment_text: |
         # UPGRADE(P2-03 v0.152): kafka_metrics — Sarama client removed, Franz-go is now mandatory.
         # Remove --feature-gates=+receiver.kafkametricsreceiver.UseFranzGo from startup if present.
+        # kafkametrics renamed to kafka_metrics automatically; pipeline references updated.
 
   before: |
     receivers:
@@ -39,6 +40,7 @@ guidance: |
 
   2. Rename the receiver component if using the old kafkametrics name:
      kafkametrics → kafka_metrics (the alias still works in 0.153 but will be removed).
+     The engine renames this automatically and updates any service.pipelines references.
 description: >-
   In 0.152, the Sarama client was removed from the kafka_metrics (formerly kafkametrics)
   receiver. Franz-go is now mandatory. If the +receiver.kafkametricsreceiver.UseFranzGo

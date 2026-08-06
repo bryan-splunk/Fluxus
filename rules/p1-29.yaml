@@ -15,12 +15,14 @@ migration:
       match_key: type
       match_value: hana
     # Inject a saphana receiver skeleton if absent — user fills in endpoint, username, password.
+    # Wire saphana into every pipeline that already contained smartagent.
     - to: $.receivers.saphana
       default: |
         endpoint: localhost:39041
         username: monitoring_user
         password: "${env:HANA_PASSWORD}"
         collection_interval: 60s
+      add_to_pipelines_with: smartagent
     - comment_path: $.receivers.smartagent
       comment_once: true
       comment_text: |

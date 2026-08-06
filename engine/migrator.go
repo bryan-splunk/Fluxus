@@ -374,6 +374,77 @@ func replaceSequenceValues(root *yaml.Node, sequencePath, oldValue, newValue str
 	return nil // non-fatal: component may simply not be in any pipeline
 }
 
+// addToPipelinesOf finds every pipeline entry under $.service.pipelines whose array
+// for the derived section (receivers/exporters/processors/connectors) contains
+// sourceComponent, and appends newComponent to that array when it is not already present.
+//
+// The section is derived from the first path segment of toPath (after stripping "$."):
+//
+//	"$.receivers.jmx"   → section = "receivers",  newComponent = "jmx"
+//	"$.exporters.otlp"  → section = "exporters",  newComponent = "otlp"
+//
+// This is called from the inject-only key_move path when AddToPipelinesWith is set.
+func addToPipelinesOf(root *yaml.Node, toPath, sourceComponent string) []string {
+	// Parse section and new component name from toPath.
+	normalized := normalizePath(toPath)
+	segments := strings.Split(normalized, ".")
+	if len(segments) < 2 {
+		return nil
+	}
+	section := segments[0]
+	newComponent := segments[len(segments)-1]
+	if section == "" || newComponent == "" || newComponent == "*" {
+		return nil
+	}
+
+	// Locate the $.service.pipelines mapping node.
+	pipelinesHits := findAll(root, normalizePath("$.service.pipelines"))
+	if len(pipelinesHits) == 0 {
+		return nil
+	}
+	pipelinesMapping := pipelinesHits[0].parent.Content[pipelinesHits[0].keyIndex+1]
+	if pipelinesMapping == nil || pipelinesMapping.Kind != yaml.MappingNode {
+		return nil
+	}
+
+	// Iterate over each named pipeline (metrics, traces, logs, traces/prod, …).
+	for i := 0; i+1 < len(pipelinesMapping.Content); i += 2 {
+		pipelineMapping := pipelinesMapping.Content[i+1]
+		if pipelineMapping == nil || pipelineMapping.Kind != yaml.MappingNode {
+			continue
+		}
+		// Find the section array (e.g. "receivers") within this pipeline.
+		var sectionSeq *yaml.Node
+		for j := 0; j+1 < len(pipelineMapping.Content); j += 2 {
+			if pipelineMapping.Content[j].Value == section {
+				sectionSeq = pipelineMapping.Content[j+1]
+				break
+			}
+		}
+		if sectionSeq == nil || sectionSeq.Kind != yaml.SequenceNode {
+			continue
+		}
+		// Check whether sourceComponent and newComponent are in the array.
+		hasSource := false
+		hasNew := false
+		for _, item := range sectionSeq.Content {
+			if item.Kind != yaml.ScalarNode {
+				continue
+			}
+			if item.Value == sourceComponent || strings.HasPrefix(item.Value, sourceComponent+"/") {
+				hasSource = true
+			}
+			if item.Value == newComponent || strings.HasPrefix(item.Value, newComponent+"/") {
+				hasNew = true
+			}
+		}
+		if hasSource && !hasNew {
+			sectionSeq.Content = append(sectionSeq.Content, scalarNode(newComponent))
+		}
+	}
+	return nil
+}
+
 // deleteSequenceMapItems finds all sequence nodes at move.SequenceMapPath and removes
 // every mapping item in each sequence where move.MatchKey == move.MatchValue.
 // Returns a slice of warning strings (non-fatal; an empty sequence is not an error).
@@ -479,6 +550,11 @@ func executeKeyMove(root *yaml.Node, keyMove KeyMove) []string {
 			if err := setAtPath(root, toPath, defaultToNode(keyMove.Default)); err != nil {
 				warnings = append(warnings, fmt.Sprintf("inject %s: %v", keyMove.To, err))
 			}
+		}
+		// Wire the newly injected component into every pipeline that already
+		// contains the source component in the matching pipeline array.
+		if keyMove.AddToPipelinesWith != "" {
+			addToPipelinesOf(root, keyMove.To, keyMove.AddToPipelinesWith)
 		}
 
 	case keyMove.From != "" && keyMove.To == "":

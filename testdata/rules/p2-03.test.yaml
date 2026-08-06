@@ -1,18 +1,51 @@
 cases:
-  - name: "fires when kafkametrics present"
+  - name: "fires when kafkametrics present — renames receiver and pipeline reference"
     config: |
       receivers:
         kafkametrics:
           brokers: [kafka:9092]
           collection_interval: 10s
+      service:
+        pipelines:
+          metrics:
+            receivers: [kafkametrics]
     should_fire: true
+    apply_contains:
+      - "kafka_metrics:"
+      - "receivers: [kafka_metrics]"
+    apply_not_contains:
+      - "kafkametrics:"
 
-  - name: "fires when kafka_metrics present"
+  - name: "fires when kafka_metrics already present — injects comment only"
     config: |
       receivers:
         kafka_metrics:
           brokers: [kafka:9092]
+      service:
+        pipelines:
+          metrics:
+            receivers: [kafka_metrics]
     should_fire: true
+    apply_contains:
+      - "kafka_metrics:"
+      - "UPGRADE(P2-03"
+
+  - name: "renames pipeline reference across multiple pipelines"
+    config: |
+      receivers:
+        kafkametrics:
+          brokers: [kafka:9092]
+      service:
+        pipelines:
+          metrics/kafka:
+            receivers: [kafkametrics]
+          metrics/other:
+            receivers: [otlp, kafkametrics]
+    should_fire: true
+    apply_contains:
+      - "kafka_metrics:"
+    apply_not_contains:
+      - "kafkametrics:"
 
   - name: "silent when neither present"
     config: |

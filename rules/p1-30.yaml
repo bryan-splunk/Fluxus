@@ -19,6 +19,7 @@ migration:
       match_key: type
       match_value: trace-forwarder
     # Inject an otlp receiver skeleton if absent (the correct replacement for both forwarders).
+    # Wire otlp into every pipeline that already contained smartagent.
     - to: $.receivers.otlp
       default: |
         protocols:
@@ -26,6 +27,7 @@ migration:
             endpoint: 0.0.0.0:4317
           http:
             endpoint: 0.0.0.0:4418
+      add_to_pipelines_with: smartagent
     - comment_path: $.receivers.smartagent
       comment_once: true
       comment_text: |

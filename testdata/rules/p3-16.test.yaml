@@ -1,5 +1,5 @@
 cases:
-  - name: "fires when signalfx exporter is present and traces pipeline exists"
+  - name: "fires when signalfx exporter is present and traces pipeline exists — comment injected, pipeline NOT auto-modified (guided)"
     config: |
       exporters:
         signalfx:
@@ -16,6 +16,8 @@ cases:
     apply_contains:
       - "P3-16 UPGRADE v0.154"
       - "trace functionality DEPRECATED"
+    apply_not_contains:
+      - "exporters: []"
 
   - name: "fires when signalfx exporter present and traces pipeline exists even if signalfx not in traces"
     config: |

@@ -482,6 +482,40 @@ key_moves:
 - If the sequence is empty after deletion, the key is left as an empty sequence (not removed).
 - This operation is mutually exclusive with `from`, `to`, `comment_path`, and `sequence_path`.
 
+#### add_to_pipelines_with — wire an injected component into existing pipelines
+
+On an inject-only (`to + default`, no `from`) key_move, set `add_to_pipelines_with` to the name of
+an existing component. After injecting the new component, the engine finds every pipeline whose
+matching array (receivers/exporters/processors/connectors — derived from the `to` path prefix)
+contains the named source component, and appends the new component's name to those same arrays if
+not already present.
+
+Use this when a monitor or sub-feature is replaced with a standalone receiver or exporter that must
+join the same pipelines as its predecessor:
+
+```yaml
+key_moves:
+  # Remove the jmx monitor entry from the smartagent monitors list.
+  - sequence_map_path: $.receivers.smartagent.monitors
+    match_key: type
+    match_value: jmx
+  # Inject a replacement jmx receiver and wire it into every pipeline
+  # that already contains smartagent in its receivers array.
+  - to: $.receivers.jmx
+    default: |
+      jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
+      endpoint: service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi
+      target_system: jvm
+    add_to_pipelines_with: smartagent   # adds jmx to every pipeline that has smartagent
+```
+
+- Only applies to the inject-only (`to + default`, no `from`) key_move mode.
+- Does nothing when the source component is not present in any pipeline array.
+- Does nothing when the new component is already in the pipeline array.
+- Does NOT remove the source component from pipelines — the source may still have other active monitors.
+- The `to` path prefix determines which pipeline array type to scan:
+  `$.receivers.*` → `pipelines.*.receivers`, `$.exporters.*` → `pipelines.*.exporters`, etc.
+
 #### wrap_as_sequence — rename a scalar field to a list field
 
 On a `from → to` move, set `wrap_as_sequence: true` to wrap the moved scalar value in a

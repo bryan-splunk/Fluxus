@@ -165,6 +165,24 @@ type KeyMove struct {
 	//   to:               $.receivers.kafka.group_rebalance_strategies
 	//   wrap_as_sequence: true
 	WrapAsSequence bool `yaml:"wrap_as_sequence,omitempty"`
+
+	// AddToPipelinesWith, when set on an inject-only (to + default, no from) key_move,
+	// copies the pipeline membership of the named source component to the newly
+	// injected component. The engine derives the pipeline array type from the prefix
+	// of the to path:
+	//   $.receivers.*   → $.service.pipelines.*.receivers
+	//   $.exporters.*   → $.service.pipelines.*.exporters
+	//   $.processors.*  → $.service.pipelines.*.processors
+	//   $.connectors.*  → $.service.pipelines.*.connectors
+	// For every pipeline whose matching array contains the source component name,
+	// the leaf name of to (e.g. "jmx" from "$.receivers.jmx") is appended to that
+	// array if not already present.
+	//
+	// Example — inject jmx receiver and wire it to every pipeline that has smartagent:
+	//   to:                   $.receivers.jmx
+	//   default:              "jar_path: ..."
+	//   add_to_pipelines_with: smartagent
+	AddToPipelinesWith string `yaml:"add_to_pipelines_with,omitempty"`
 }
 
 // Migration holds migration guidance and optional automated key moves.

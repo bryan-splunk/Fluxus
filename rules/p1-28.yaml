@@ -15,6 +15,7 @@ migration:
       match_key: type
       match_value: jmx
     # Inject a jmx receiver skeleton if absent — user fills in jar_path, endpoint, target_system.
+    # Wire jmx into every pipeline that already contained smartagent.
     # P1-31 (v0.157) will further migrate this jmx receiver to the jmx-scraper external tool.
     - to: $.receivers.jmx
       default: |
@@ -22,6 +23,7 @@ migration:
         endpoint: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
         target_system: jvm
         collection_interval: 10s
+      add_to_pipelines_with: smartagent
     - comment_path: $.receivers.smartagent
       comment_once: true
       comment_text: |
