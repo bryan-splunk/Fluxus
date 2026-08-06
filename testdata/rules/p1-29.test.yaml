@@ -1,0 +1,47 @@
+cases:
+  - name: "fires when smartagent receiver has type hana monitor"
+    config: |
+      extensions:
+        smartagent:
+          bundleDir: /usr/lib/splunk-otel-collector/agent-bundle
+      receivers:
+        smartagent:
+          monitors:
+            - type: hana
+              host: hana-host
+              port: 39041
+              username: monitoring_user
+              password: "${env:HANA_PASSWORD}"
+      service:
+        extensions: [smartagent]
+    should_fire: true
+    apply_contains:
+      - "P1-29 UPGRADE v0.154"
+
+  - name: "fires when hana is among multiple monitors"
+    config: |
+      receivers:
+        smartagent:
+          monitors:
+            - type: cpu
+            - type: hana
+              host: hana-host
+              port: 39041
+    should_fire: true
+
+  - name: "silent when smartagent has no hana monitor"
+    config: |
+      receivers:
+        smartagent:
+          monitors:
+            - type: cpu
+            - type: memory
+    should_fire: false
+
+  - name: "silent when no smartagent receiver"
+    config: |
+      receivers:
+        saphana:
+          endpoint: hana-host:39041
+          username: monitoring_user
+    should_fire: false

@@ -1,0 +1,60 @@
+id: P3-17
+category: p3
+introduced: "0.156"
+title: "Splunk timestamp Processor Deprecated"
+look_for:
+  - path: $.processors.timestamp
+    match: exists
+  - path: $.processors.timestamp
+    match: exists
+    in_comments: true
+migration:
+  strategy: inform_only
+  key_moves:
+    - comment_path: $.processors.timestamp
+      comment_once: true
+      comment_text: |
+        # [P3-17 UPGRADE v0.156] Splunk timestamp processor DEPRECATED.
+        # Use OTTL statements in the 'transform' processor to apply timestamp offsets instead.
+        # See docs/deprecations/timestampprocessor.md for migration examples.
+        # Example equivalent using transform processor:
+        #   processors:
+        #     transform/timestamps:
+        #       log_statements:
+        #         - context: log
+        #           statements:
+        #             - set(time, Now())  # or adjust with time offset as needed
+  before: |
+    processors:
+      timestamp:
+        round_to_nearest: 1s
+        offset_duration: 0s
+  after: |
+    # Replace with transform processor using OTTL time statements.
+    # Refer to docs/deprecations/timestampprocessor.md for the specific OTTL equivalent
+    # for your timestamp normalization use case.
+    processors:
+      transform/timestamps:
+        log_statements:
+          - context: log
+            statements:
+              - set(time, TruncateTime(time, Duration("1s")))
+guidance: |
+  The Splunk timestamp processor (processors.timestamp:) was deprecated in 0.156 in favor
+  of the upstream transform processor with OTTL statements.
+
+  Refer to the migration documentation for specific OTTL equivalents:
+    docs/deprecations/timestampprocessor.md
+
+  General migration pattern:
+  - Use transform processor with log_statements, metric_statements, or trace_statements
+  - OTTL time functions (TruncateTime, Now, etc.) replace the timestamp processor operations
+  - The transform processor is more flexible and supports all signal types
+
+  The timestamp processor still works in 0.156 but will be removed in a future release.
+  Migrate before the removal to avoid a startup failure.
+description: >-
+  In 0.156, the Splunk timestamp processor (processors.timestamp:) was deprecated in favor
+  of the upstream transform processor with OTTL statements. The timestamp processor still
+  functions but will be removed in a future release. Migrate timestamp normalization logic
+  to the transform processor using OTTL time functions before removal.

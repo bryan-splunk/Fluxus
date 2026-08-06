@@ -53,6 +53,16 @@ look_for:
     match: exists
   - path: $.exporters.loadbalancing
     match: exists
+  - path: $.receivers.windowsservice
+    match: exists
+  - path: $.exporters.prometheusremotewrite
+    match: exists
+  - path: $.receivers.apachespark
+    match: exists
+  - path: $.receivers.awscloudwatch
+    match: exists
+  - path: $.processors.cumulativetodelta
+    match: exists
 migration:
   strategy: auto
   key_moves:
@@ -110,6 +120,18 @@ migration:
     # --- Exporters: definition renames ---
     - from: $.exporters.loadbalancing
       to: $.exporters.load_balancing
+    - from: $.exporters.prometheusremotewrite
+      to: $.exporters.prometheus_remote_write
+    # --- Additional receiver renames (v0.154–v0.156) ---
+    - from: $.receivers.windowsservice
+      to: $.receivers.windows_service
+    - from: $.receivers.apachespark
+      to: $.receivers.apache_spark
+    - from: $.receivers.awscloudwatch
+      to: $.receivers.aws_cloudwatch
+    # --- Additional processor renames (v0.157) ---
+    - from: $.processors.cumulativetodelta
+      to: $.processors.cumulative_to_delta
     # --- Pipeline receiver array references ---
     - sequence_path: $.service.pipelines.*.receivers
       old_value: filelog
@@ -165,6 +187,15 @@ migration:
     - sequence_path: $.service.pipelines.*.receivers
       old_value: mongodbatlas
       new_value: mongodb_atlas
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: windowsservice
+      new_value: windows_service
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: apachespark
+      new_value: apache_spark
+    - sequence_path: $.service.pipelines.*.receivers
+      old_value: awscloudwatch
+      new_value: aws_cloudwatch
     # Connectors used as receivers in pipelines
     - sequence_path: $.service.pipelines.*.receivers
       old_value: spanmetrics
@@ -173,6 +204,9 @@ migration:
       old_value: servicegraph
       new_value: service_graph
     # --- Pipeline processor array references ---
+    - sequence_path: $.service.pipelines.*.processors
+      old_value: cumulativetodelta
+      new_value: cumulative_to_delta
     - sequence_path: $.service.pipelines.*.processors
       old_value: k8sattributes
       new_value: k8s_attributes
@@ -189,6 +223,9 @@ migration:
     - sequence_path: $.service.pipelines.*.exporters
       old_value: loadbalancing
       new_value: load_balancing
+    - sequence_path: $.service.pipelines.*.exporters
+      old_value: prometheusremotewrite
+      new_value: prometheus_remote_write
     # Connectors used as exporters in pipelines
     - sequence_path: $.service.pipelines.*.exporters
       old_value: spanmetrics
@@ -256,6 +293,18 @@ migration:
     # Exporters
     - comment_path: $.exporters.load_balancing
       comment_text: '# [P3-01 UPGRADE v0.153] loadbalancing renamed to load_balancing'
+    - comment_path: $.exporters.prometheus_remote_write
+      comment_text: '# [P3-01 UPGRADE v0.154] prometheusremotewrite renamed to prometheus_remote_write'
+    # Additional receivers (v0.154–v0.156)
+    - comment_path: $.receivers.windows_service
+      comment_text: '# [P3-01 UPGRADE v0.154] windowsservice renamed to windows_service'
+    - comment_path: $.receivers.apache_spark
+      comment_text: '# [P3-01 UPGRADE v0.154] apachespark renamed to apache_spark'
+    - comment_path: $.receivers.aws_cloudwatch
+      comment_text: '# [P3-01 UPGRADE v0.156] awscloudwatch renamed to aws_cloudwatch'
+    # Additional processors (v0.157)
+    - comment_path: $.processors.cumulative_to_delta
+      comment_text: '# [P3-01 UPGRADE v0.157] cumulativetodelta renamed to cumulative_to_delta'
   before: |
     # Old camelCase / joined names (deprecated aliases — will be removed in future):
     receivers:
@@ -277,6 +326,9 @@ migration:
       cloudfoundry: {}      # → cloud_foundry (since 0.152)
       azureeventhub: {}     # → azure_event_hub (since 0.145)
       mongodbatlas: {}      # → mongodb_atlas (since 0.145)
+      windowsservice: {}    # → windows_service (since 0.154)
+      apachespark: {}       # → apache_spark (since 0.154)
+      awscloudwatch: {}     # → aws_cloudwatch (since 0.156)
     processors:
       k8sattributes: {}     # → k8s_attributes (since 0.146)
       metricstransform: {}  # → metrics_transform (since 0.152)
@@ -286,7 +338,10 @@ migration:
       spanmetrics: {}       # → span_metrics (since 0.151)
       servicegraph: {}      # → service_graph (since 0.151)
     exporters:
-      loadbalancing: {}     # → load_balancing (since 0.153)
+      loadbalancing: {}       # → load_balancing (since 0.153)
+      prometheusremotewrite: {} # → prometheus_remote_write (since 0.154)
+    processors:
+      cumulativetodelta: {}   # → cumulative_to_delta (since 0.157)
   after: |
     # New canonical snake_case names — also renamed in all service.pipelines.* arrays:
     receivers:
@@ -308,6 +363,9 @@ migration:
       cloud_foundry: {}
       azure_event_hub: {}
       mongodb_atlas: {}
+      windows_service: {}
+      apache_spark: {}
+      aws_cloudwatch: {}
     processors:
       k8s_attributes: {}
       metrics_transform: {}
@@ -318,6 +376,9 @@ migration:
       service_graph: {}
     exporters:
       load_balancing: {}
+      prometheus_remote_write: {}
+    processors:
+      cumulative_to_delta: {}
 guidance: |
   Rename all occurrences of deprecated component names in:
   - Component definitions (receivers:, processors:, exporters:, connectors: blocks)
@@ -327,14 +388,14 @@ guidance: |
   Use the canonical snake_case names. Deprecated aliases still work in 0.153 but will
   be removed in a future release, causing startup failure.
 
-  Not renamed (confirmed safe through v0.153): windowsservices, vcenter, jaeger, otlp,
-  zipkin, prometheus, smartagent, nop, splunk_hec, otlphttp, signalfx (exporter), batch,
-  memory_limiter, resource, attributes, filter.
+  Not renamed (confirmed safe through v0.157): vcenter, jaeger, otlp, zipkin, prometheus,
+  smartagent, nop, splunk_hec, otlphttp, signalfx (exporter), batch, memory_limiter,
+  resource, attributes, filter, routing, count, forward.
 description: >-
-  Many component names were renamed to snake_case. Deprecated aliases still work in 0.153
-  but will be removed in a future release. Rename all occurrences in both the component
-  definition blocks and all pipeline references (service.pipelines.*). Also rename any
-  occurrences in commented-out blocks to keep the config consistent.
-  Not renamed (confirmed clean through v0.153): windowsservices, vcenter, jaeger, otlp,
-  zipkin, prometheus, smartagent, nop, splunk_hec, otlphttp, signalfx (exporter), batch,
-  memory_limiter, resource, attributes, filter.
+  Many component names were renamed to snake_case across releases v0.145–v0.157. Deprecated
+  aliases still work but will be removed in a future release, causing startup failure.
+  Rename all occurrences in both component definition blocks and all pipeline references
+  (service.pipelines.*). Also rename any occurrences in commented-out blocks.
+  Not renamed (confirmed clean through v0.157): vcenter, jaeger, otlp, zipkin, prometheus,
+  smartagent, nop, splunk_hec, otlphttp, signalfx (exporter), batch, memory_limiter,
+  resource, attributes, filter, routing, count, forward.

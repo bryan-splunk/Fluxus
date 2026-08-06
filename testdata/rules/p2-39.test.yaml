@@ -1,0 +1,50 @@
+cases:
+  - name: "fires when signalfx exporter has include_metrics with per-core cpu metric"
+    config: |
+      exporters:
+        signalfx:
+          access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+          include_metrics:
+            - metric_name: cpu.idle
+              dimensions:
+                cpu: ["*"]
+      service:
+        pipelines:
+          metrics:
+            exporters: [signalfx]
+    should_fire: true
+    apply_contains:
+      - "P2-39 v0.155"
+
+  - name: "fires when cpu.utilization_per_core is in include_metrics"
+    config: |
+      exporters:
+        signalfx:
+          access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+          include_metrics:
+            - metric_name: cpu.utilization_per_core
+    should_fire: true
+
+  - name: "silent when signalfx exporter has no include_metrics"
+    config: |
+      exporters:
+        signalfx:
+          access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+    should_fire: false
+
+  - name: "silent when include_metrics does not contain cpu metrics"
+    config: |
+      exporters:
+        signalfx:
+          access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+          include_metrics:
+            - metric_name: memory.used
+    should_fire: false
+
+  - name: "silent when no signalfx exporter"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

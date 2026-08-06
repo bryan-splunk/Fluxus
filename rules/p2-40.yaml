@@ -1,0 +1,56 @@
+id: P2-40
+category: p2
+introduced: "0.156"
+title: "oracledb Receiver — V$SQL_PLAN_STATISTICS_ALL Privilege Required"
+look_for:
+  - path: $.receivers.oracledb
+    match: exists
+  - path: $.receivers.oracledb
+    match: exists
+    in_comments: true
+migration:
+  strategy: inform_only
+  key_moves:
+    - comment_path: $.receivers.oracledb
+      comment_once: true
+      comment_text: |
+        # UPGRADE(P2-40 v0.156): oracledb receiver now queries V$SQL_PLAN_STATISTICS_ALL.
+        # ACTION: Grant the collector database user SELECT access on this view:
+        #   GRANT SELECT ON SYS.V_$SQL_PLAN_STATISTICS_ALL TO <monitoring_user>;
+        # Or grant the broader privilege:
+        #   GRANT SELECT ANY DICTIONARY TO <monitoring_user>;
+        # Without this privilege, SQL query plan detail collection will fail at runtime.
+  before: |
+    receivers:
+      oracledb:
+        endpoint: oracle://monitoring_user:${env:ORACLE_PASSWORD}@localhost:1521/orcl
+  after: |
+    # No YAML config change needed. Grant the required Oracle privilege:
+    # GRANT SELECT ON SYS.V_$SQL_PLAN_STATISTICS_ALL TO monitoring_user;
+    receivers:
+      oracledb:
+        endpoint: oracle://monitoring_user:${env:ORACLE_PASSWORD}@localhost:1521/orcl
+guidance: |
+  No changes are required in the collector YAML configuration.
+
+  In 0.156, the oracledb receiver enhanced SQL query plan collection by switching from
+  V$SQL_PLAN to V$SQL_PLAN_STATISTICS_ALL, which includes additional runtime execution
+  statistics (OUTPUT_ROWS, LAST_OUTPUT_ROWS, LAST_ELAPSED_TIME, etc.).
+
+  The collector database user must be granted SELECT access on the new view:
+    GRANT SELECT ON SYS.V_$SQL_PLAN_STATISTICS_ALL TO <monitoring_user>;
+
+  Alternatively, grant the broader privilege:
+    GRANT SELECT ANY DICTIONARY TO <monitoring_user>;
+
+  Without this privilege, SQL query plan detail collection will fail at runtime with an
+  ORA-00942 error. The oracledb receiver will continue to collect other metrics normally.
+
+  Note: V$SQL_PLAN_STATISTICS_ALL is a superset of V$SQL_PLAN, so all previously collected
+  plan fields are still emitted in addition to the new runtime statistics.
+description: >-
+  In 0.156, the oracledb receiver changed its SQL query plan collection query to use
+  V$SQL_PLAN_STATISTICS_ALL instead of V$SQL_PLAN, enabling collection of additional runtime
+  execution statistics. Existing deployments that only grant SELECT access to V$SQL_PLAN will
+  experience query plan collection failures until the SELECT ON SYS.V_$SQL_PLAN_STATISTICS_ALL
+  privilege is granted to the collector monitoring user.

@@ -1,0 +1,43 @@
+cases:
+  - name: "fires when routing connector is present"
+    config: |
+      connectors:
+        routing:
+          default_pipelines: [traces/default]
+          table:
+            - statement: route() where attributes["env"] == "prod"
+              pipelines: [traces/prod]
+      service:
+        pipelines:
+          traces/in:
+            receivers: [otlp]
+            exporters: [routing]
+          traces/default:
+            receivers: [routing]
+            exporters: [otlp]
+          traces/prod:
+            receivers: [routing]
+            exporters: [otlp/prod]
+    should_fire: true
+    apply_contains:
+      - "P2-43 v0.157"
+      - "error_mode"
+
+  - name: "fires when routing connector has explicit error_mode already set"
+    config: |
+      connectors:
+        routing:
+          error_mode: propagate
+          default_pipelines: [metrics/default]
+          table:
+            - statement: route() where attributes["region"] == "us-west"
+              pipelines: [metrics/us-west]
+    should_fire: true
+
+  - name: "silent when no routing connector"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

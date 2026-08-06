@@ -1,0 +1,44 @@
+cases:
+  - name: "fires when jmx receiver is present"
+    config: |
+      receivers:
+        jmx:
+          jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
+          endpoint: service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi
+          target_system: cassandra
+          collection_interval: 10s
+      service:
+        pipelines:
+          metrics:
+            receivers: [jmx]
+    should_fire: true
+    apply_contains:
+      - "P1-31 UPGRADE v0.157"
+      - "jmx-scraper"
+
+  - name: "fires when jmx receiver is configured with jvm target"
+    config: |
+      receivers:
+        jmx:
+          jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
+          endpoint: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
+          target_system: jvm
+    should_fire: true
+
+  - name: "silent when no jmx receiver — only smartagent with jmx monitor"
+    config: |
+      receivers:
+        smartagent:
+          monitors:
+            - type: jmx
+              host: localhost
+              port: 1099
+    should_fire: false
+
+  - name: "silent when no jmx receiver at all"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

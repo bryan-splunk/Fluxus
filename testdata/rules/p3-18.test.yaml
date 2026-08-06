@@ -1,0 +1,62 @@
+cases:
+  - name: "fires when routing connector uses request context"
+    config: |
+      connectors:
+        routing:
+          default_pipelines: [traces/default]
+          table:
+            - context: request
+              statement: route() where request["X-Tenant-ID"] == "prod"
+              pipelines: [traces/prod]
+      service:
+        pipelines:
+          traces/in:
+            receivers: [otlp]
+            exporters: [routing]
+          traces/default:
+            receivers: [routing]
+            exporters: [otlp]
+          traces/prod:
+            receivers: [routing]
+            exporters: [otlp/prod]
+    should_fire: true
+    apply_contains:
+      - "P3-18 UPGRADE v0.156"
+      - "request"
+
+  - name: "fires when routing condition uses request[] array access syntax"
+    config: |
+      connectors:
+        routing:
+          table:
+            - statement: route() where request["Authorization"] == "Bearer token123"
+              pipelines: [logs/secure]
+    should_fire: true
+
+  - name: "silent when routing connector uses modern otelcol paths"
+    config: |
+      connectors:
+        routing:
+          default_pipelines: [traces/default]
+          table:
+            - statement: route() where otelcol.client.metadata["X-Tenant-ID"][0] == "prod"
+              pipelines: [traces/prod]
+    should_fire: false
+
+  - name: "silent when routing connector uses OTTL attribute conditions (not request context)"
+    config: |
+      connectors:
+        routing:
+          default_pipelines: [traces/default]
+          table:
+            - statement: route() where attributes["env"] == "prod"
+              pipelines: [traces/prod]
+    should_fire: false
+
+  - name: "silent when no routing connector"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

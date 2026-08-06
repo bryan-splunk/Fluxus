@@ -1,0 +1,50 @@
+cases:
+  - name: "fires when resource_detection has k8snode in detectors list"
+    config: |
+      processors:
+        resource_detection:
+          detectors: [env, k8snode]
+      service:
+        pipelines:
+          metrics:
+            processors: [resource_detection]
+    should_fire: true
+    apply_contains:
+      - "k8s_api"
+      - "P3-15 UPGRADE v0.154"
+
+  - name: "fires when resource_detection has k8snode detector and sub-key"
+    config: |
+      processors:
+        resource_detection:
+          detectors: [k8snode]
+          k8snode:
+            node_from_env_var: K8S_NODE_NAME
+    should_fire: true
+    apply_contains:
+      - "k8s_api:"
+      - "K8S_NODE_NAME"
+
+  - name: "silent when resource_detection uses k8s_api already"
+    config: |
+      processors:
+        resource_detection:
+          detectors: [env, k8s_api]
+          k8s_api:
+            node_from_env_var: K8S_NODE_NAME
+    should_fire: false
+
+  - name: "silent when resource_detection has no k8s detectors"
+    config: |
+      processors:
+        resource_detection:
+          detectors: [env, system]
+    should_fire: false
+
+  - name: "silent when no resource_detection processor"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

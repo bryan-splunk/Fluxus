@@ -1,0 +1,67 @@
+id: P1-27
+category: p1
+introduced: "0.154"
+title: "Smart Agent Extension — collectd Block and bundleDir Removed"
+look_for:
+  - path: $.extensions.smartagent.bundleDir
+    match: exists
+  - path: $.extensions.smartagent.collectd
+    match: exists
+  - path: $.extensions.smartagent.bundleDir
+    match: exists
+    in_comments: true
+  - path: $.extensions.smartagent.collectd
+    match: exists
+    in_comments: true
+migration:
+  strategy: auto
+  key_moves:
+    # Delete bundleDir from the smartagent extension — causes startup failure in 0.154+.
+    - from: $.extensions.smartagent.bundleDir
+      to: ""
+    # Delete the collectd block from the smartagent extension.
+    - from: $.extensions.smartagent.collectd
+      to: ""
+    # Inject upgrade notice on the smartagent extension so the team knows the bundle is gone.
+    - comment_path: $.extensions.smartagent
+      comment_once: true
+      comment_text: |
+        # [P1-27 UPGRADE v0.154] Smart Agent Extension: bundleDir and collectd config block REMOVED.
+        # The agent bundle (collectd, Python runtime, Java runtime) is no longer shipped with the
+        # Splunk OTel Collector. bundleDir and collectd sub-keys cause startup failure in 0.154+.
+        # ACTION: Migrate collectd-based monitors (collectd/openstack, collectd/custom, jmx, hana)
+        # to native OpenTelemetry receivers. See P1-28, P1-29 for specific monitor migration guidance.
+  before: |
+    extensions:
+      smartagent:
+        bundleDir: /usr/lib/splunk-otel-collector/agent-bundle
+        collectd:
+          configDir: /var/run/splunk-otel-collector/collectd
+          logLevel: err
+          intervalSeconds: 10
+  after: |
+    # bundleDir and collectd block removed automatically.
+    # The smartagent extension may still be used for other monitors that do not
+    # depend on the agent bundle (e.g. monitors that use native Go implementations).
+    extensions:
+      smartagent: {}
+guidance: |
+  Remove the bundleDir: field and the entire collectd: sub-block from the smartagent extension.
+  Both fields cause startup failure in 0.154+ because the agent bundle (bundled collectd, Python
+  runtime, and Java runtime) is no longer shipped with the Splunk OTel Collector.
+
+  Any monitors that relied on the bundled runtimes — collectd-based monitors, Python-based monitors,
+  and the jmx Smart Agent monitor — are also removed. Migrate them to native OTel receivers:
+  - collectd/openstack, collectd/custom → use native OTel receivers or Prometheus exporters
+  - jmx Smart Agent monitor → see P1-28 for jmx receiver migration
+  - hana monitor → see P1-29 for saphana/sqlquery receiver migration
+description: >-
+  In 0.154 the Splunk OTel Collector removed the agent bundle entirely — the bundled collectd,
+  Python, and Java runtimes are no longer shipped with any package or container image. As a result,
+  the bundleDir: field and the collectd: sub-block in the Smart Agent Extension now cause a startup
+  failure. The engine automatically removes both fields. Migrate any collectd-based monitors,
+  Python-based monitors, and the jmx Smart Agent monitor to native OpenTelemetry receivers.
+  See P1-28 (jmx monitor) and P1-29 (hana monitor) for specific migration paths.
+see_also:
+  - P1-28
+  - P1-29

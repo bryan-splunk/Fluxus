@@ -1,0 +1,38 @@
+cases:
+  - name: "fires when config references old memory_rss metric name"
+    config: |
+      # Dashboard alert uses: otelcol_process_memory_rss > 500000000
+      processors:
+        memory_limiter:
+          limit_mib: 512
+          check_interval: 1s
+    should_fire: true
+
+  - name: "fires when config references heap metric name"
+    config: |
+      # Monitor query: otelcol_processor_memory_heap
+      processors:
+        memory_limiter:
+          limit_mib: 1024
+          spike_limit_mib: 256
+    should_fire: true
+
+  - name: "silent when no old metric name references present"
+    config: |
+      processors:
+        memory_limiter:
+          limit_mib: 512
+          check_interval: 1s
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false
+
+  - name: "silent when no memory_limiter processor"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

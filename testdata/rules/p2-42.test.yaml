@@ -1,0 +1,51 @@
+cases:
+  - name: "fires when host_metrics receiver has cpu scraper (new name)"
+    config: |
+      receivers:
+        host_metrics:
+          scrapers:
+            cpu: {}
+      service:
+        pipelines:
+          metrics:
+            receivers: [host_metrics]
+    should_fire: true
+    apply_contains:
+      - "P2-42 v0.157"
+      - "cpu attribute"
+
+  - name: "fires when hostmetrics receiver has cpu scraper (old name)"
+    config: |
+      receivers:
+        hostmetrics:
+          scrapers:
+            cpu: {}
+    should_fire: true
+
+  - name: "fires when cpu scraper has explicit metric config"
+    config: |
+      receivers:
+        host_metrics:
+          scrapers:
+            cpu:
+              metrics:
+                system.cpu.time:
+                  enabled: true
+    should_fire: true
+
+  - name: "silent when host_metrics has no cpu scraper"
+    config: |
+      receivers:
+        host_metrics:
+          scrapers:
+            memory: {}
+            disk: {}
+    should_fire: false
+
+  - name: "silent when no host_metrics receiver"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

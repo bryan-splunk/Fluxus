@@ -1,0 +1,73 @@
+id: P1-29
+category: p1
+introduced: "0.154"
+title: "Smart Agent hana Monitor Removed"
+look_for:
+  - path: $.receivers.smartagent
+    match: exists
+  - raw_pattern: "(?m)type:\\s+hana\\s*$"
+logic: and
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.smartagent
+      comment_once: true
+      comment_text: |
+        # [P1-29 UPGRADE v0.154] Smart Agent hana monitor REMOVED.
+        # ACTION: Migrate to the 'saphana' receiver from opentelemetry-collector-contrib.
+        # For custom SAP HANA queries, also use the 'sqlquery' receiver.
+        # Example saphana receiver config:
+        #   receivers:
+        #     saphana:
+        #       endpoint: localhost:39041
+        #       username: monitoring_user
+        #       password: "${env:HANA_PASSWORD}"
+        #       collection_interval: 60s
+        # See: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/saphanareceiver
+  before: |
+    extensions:
+      smartagent:
+        bundleDir: /usr/lib/splunk-otel-collector/agent-bundle
+
+    receivers:
+      smartagent:
+        monitors:
+          - type: hana
+            host: hana-host
+            port: 39041
+            username: monitoring_user
+            password: "${env:HANA_PASSWORD}"
+  after: |
+    # Replace the hana Smart Agent monitor with the native saphana receiver:
+    receivers:
+      saphana:
+        endpoint: hana-host:39041
+        username: monitoring_user
+        password: "${env:HANA_PASSWORD}"
+        collection_interval: 60s
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [saphana]   # update manually
+guidance: |
+  Remove the hana monitor entry from the smartagent receiver's monitors list and migrate to
+  the saphana receiver from opentelemetry-collector-contrib.
+
+  The saphana receiver provides equivalent SAP HANA monitoring with native OTel integration:
+  - endpoint: <host>:<port> (replaces host/port from the Smart Agent monitor)
+  - username / password: same credentials
+  - collection_interval: scrape interval
+
+  For custom SQL queries against SAP HANA that were run via the hana monitor, use the
+  sqlquery receiver instead:
+    https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/sqlqueryreceiver
+
+  Note: Also remove the bundleDir from the smartagent extension if present (see P1-27).
+description: >-
+  The hana Smart Agent monitor was deprecated and removed in 0.154. Any config using
+  'type: hana' inside the smartagent receiver's monitors list will no longer produce SAP HANA
+  metrics after upgrading. Migrate to the saphana receiver from opentelemetry-collector-contrib
+  for standard HANA monitoring, or use the sqlquery receiver for custom SQL queries.
+see_also:
+  - P1-27

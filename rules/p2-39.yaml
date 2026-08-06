@@ -1,0 +1,88 @@
+id: P2-39
+category: p2
+introduced: "0.155"
+title: "signalfx Exporter — Per-Core CPU Metrics Removed from Default Translations"
+look_for:
+  - path: $.exporters.signalfx.include_metrics
+    match: exists
+  - raw_pattern: "(?m)cpu\\.(idle|utilization_per_core|user|system|wait|steal|softirq|interrupt|nice)"
+logic: and
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.exporters.signalfx
+      comment_once: true
+      comment_text: |
+        # UPGRADE(P2-39 v0.155): signalfx exporter no longer produces per-core cpu.* metrics by default.
+        # If include_metrics enables per-core CPU metrics (cpu attribute with dimensions filter),
+        # those metrics are no longer calculated by the default translations.
+        # ACTION: Add a transform processor to re-derive per-core metrics from system.cpu.time.
+        # See the v0.155 release notes for the full transform processor YAML.
+  before: |
+    exporters:
+      signalfx:
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+        include_metrics:
+          - metric_name: cpu.idle
+            dimensions:
+              cpu: ["*"]
+  after: |
+    # Add a transform processor to re-derive per-core cpu.idle from system.cpu.time:
+    receivers:
+      hostmetrics:
+        scrapers:
+          cpu:
+            metrics:
+              system.cpu.time:
+                enabled: true
+                attributes: [cpu, state]
+
+    processors:
+      transform/cpu_idle_per_core:
+        error_mode: ignore
+        metric_statements:
+          - context: metric
+            statements:
+              - copy_metric(name="cpu.idle") where metric.name == "system.cpu.time"
+          - context: datapoint
+            statements:
+              - set(datapoint.value_double, 0.0) where metric.name == "cpu.idle" and datapoint.attributes["state"] != "idle"
+          - context: metric
+            statements:
+              - aggregate_on_attributes("sum", ["cpu"]) where metric.name == "cpu.idle"
+              - scale_metric(100.0) where metric.name == "cpu.idle"
+          - context: datapoint
+            statements:
+              - set(datapoint.value_int, Int(datapoint.value_double)) where metric.name == "cpu.idle"
+
+    exporters:
+      signalfx:
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [hostmetrics]
+          processors: [transform/cpu_idle_per_core]
+          exporters: [signalfx]
+guidance: |
+  This change only affects users who have explicitly enabled per-core CPU metrics using
+  include_metrics with a cpu dimension filter in the signalfx exporter.
+
+  In 0.155, the default translation rules in the signalfx exporter no longer calculate
+  per-core cpu.* metrics (cpu.idle, cpu.utilization_per_core, etc.) even when they are
+  explicitly enabled via include_metrics. The aggregate cpu.* metrics are still produced.
+
+  To restore per-core CPU metrics, add a transform processor that re-derives them from
+  system.cpu.time or system.cpu.utilization using the OTTL copy_metric and
+  aggregate_on_attributes functions. See the after example above for a complete cpu.idle
+  per-core metric derivation.
+
+  For cpu.utilization_per_core specifically, the aggregate cpu.utilization metric is still
+  produced by default; only the per-core breakdown requires the transform processor workaround.
+description: >-
+  In 0.155, the signalfx exporter stopped calculating per-core cpu.* metrics that are disabled
+  by default, even when they are explicitly enabled via include_metrics with a cpu dimension
+  filter. The aggregate CPU metrics are still produced. Users who rely on per-core cpu.idle or
+  cpu.utilization_per_core must add a transform processor to re-derive those metrics from the
+  hostmetrics receiver's system.cpu.time or system.cpu.utilization with per-cpu attributes.

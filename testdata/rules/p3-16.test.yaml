@@ -1,0 +1,60 @@
+cases:
+  - name: "fires when signalfx exporter is present and traces pipeline exists"
+    config: |
+      exporters:
+        signalfx:
+          access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+      service:
+        pipelines:
+          traces:
+            receivers: [otlp]
+            exporters: [signalfx]
+          metrics:
+            receivers: [otlp]
+            exporters: [signalfx]
+    should_fire: true
+    apply_contains:
+      - "P3-16 UPGRADE v0.154"
+      - "trace functionality DEPRECATED"
+
+  - name: "fires when signalfx exporter present and traces pipeline exists even if signalfx not in traces"
+    config: |
+      exporters:
+        signalfx:
+          access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+        otlp/traces:
+          endpoint: ingest.us1.signalfx.com:443
+      service:
+        pipelines:
+          traces:
+            receivers: [otlp]
+            exporters: [otlp/traces]
+          metrics:
+            receivers: [otlp]
+            exporters: [signalfx]
+    should_fire: true
+
+  - name: "silent when signalfx exporter present but no traces pipeline"
+    config: |
+      exporters:
+        signalfx:
+          access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+      service:
+        pipelines:
+          metrics:
+            receivers: [otlp]
+            exporters: [signalfx]
+    should_fire: false
+
+  - name: "silent when no signalfx exporter"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+      service:
+        pipelines:
+          traces:
+            receivers: [otlp]
+            exporters: [otlp/splunk]
+    should_fire: false

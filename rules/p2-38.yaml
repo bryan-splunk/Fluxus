@@ -1,0 +1,44 @@
+id: P2-38
+category: p2
+introduced: "0.155"
+title: "oracledb Receiver — db.namespace Attribute Semantic Change"
+look_for:
+  - path: $.receivers.oracledb
+    match: exists
+  - path: $.receivers.oracledb
+    match: exists
+    in_comments: true
+migration:
+  strategy: inform_only
+  key_moves:
+    - comment_path: $.receivers.oracledb
+      comment_once: true
+      comment_text: |
+        # UPGRADE(P2-38 v0.155): oracledb db.namespace attribute semantic change.
+        # The db.namespace attribute emitted by this receiver changed meaning in 0.155.
+        # ACTION: Update any dashboards, alerts, or queries that filter on db.namespace
+        # to use the new attribute value (now reports the database service name).
+  before: |
+    receivers:
+      oracledb:
+        endpoint: oracle://user:pass@localhost:1521/mydb
+  after: |
+    # No YAML config change needed. Update dashboards/alerts that filter on db.namespace.
+    receivers:
+      oracledb:
+        endpoint: oracle://user:pass@localhost:1521/mydb
+guidance: |
+  No changes are required in the collector YAML configuration for this rule.
+
+  The db.namespace attribute emitted by the oracledb receiver changed its semantic meaning
+  in 0.155. Any Splunk Observability Cloud dashboards, alerts, saved searches, or SPL queries
+  that filter, group, or split on the db.namespace attribute value must be reviewed and
+  updated to reflect the new value.
+
+  Review the oracledb receiver changelog for the exact change in attribute value format:
+  https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/oraclesdbreceiver
+description: >-
+  In 0.155, the db.namespace attribute emitted by the oracledb receiver changed its semantic
+  meaning. This does not require changes to the collector YAML configuration, but any dashboards,
+  alerts, or queries that depend on the db.namespace attribute value must be updated to reflect
+  the new semantics.

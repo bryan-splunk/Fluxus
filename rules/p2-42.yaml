@@ -1,0 +1,92 @@
+id: P2-42
+category: p2
+introduced: "0.157"
+title: "host_metrics Receiver — cpu Attribute Now Opt-In for CPU Metrics"
+look_for:
+  - path: $.receivers.host_metrics.scrapers.cpu
+    match: exists
+  - path: $.receivers.hostmetrics.scrapers.cpu
+    match: exists
+  - path: $.receivers.host_metrics.scrapers.cpu
+    match: exists
+    in_comments: true
+  - path: $.receivers.hostmetrics.scrapers.cpu
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.host_metrics
+      comment_once: true
+      comment_text: |
+        # UPGRADE(P2-42 v0.157): cpu attribute is now opt-in for system.cpu.time and system.cpu.utilization.
+        # By default these metrics are now aggregated across ALL logical CPUs (no per-core breakdown).
+        # ACTION: If dashboards or alerts use per-core CPU data, add explicit attribute config:
+        #   scrapers:
+        #     cpu:
+        #       metrics:
+        #         system.cpu.time:
+        #           attributes: [cpu, state]
+        #         system.cpu.utilization:
+        #           attributes: [cpu, state]
+    - comment_path: $.receivers.hostmetrics
+      comment_once: true
+      comment_text: |
+        # UPGRADE(P2-42 v0.157): cpu attribute is now opt-in for system.cpu.time and system.cpu.utilization.
+        # By default these metrics are now aggregated across ALL logical CPUs (no per-core breakdown).
+        # ACTION: If per-core CPU data is needed, add explicit attributes: [cpu, state] under each metric.
+  before: |
+    receivers:
+      host_metrics:
+        scrapers:
+          cpu: {}
+  after: |
+    # Option A — Default (aggregate only, no per-core breakdown):
+    receivers:
+      host_metrics:
+        scrapers:
+          cpu: {}
+
+    # Option B — Restore per-core breakdown (opt-in):
+    # receivers:
+    #   host_metrics:
+    #     scrapers:
+    #       cpu:
+    #         metrics:
+    #           system.cpu.time:
+    #             attributes: [cpu, state]
+    #           system.cpu.utilization:
+    #             attributes: [cpu, state]
+guidance: |
+  In 0.157, the cpu attribute was made opt-in for system.cpu.time and system.cpu.utilization
+  metrics in the host_metrics (hostmetrics) receiver CPU scraper.
+
+  Default behavior change:
+  - BEFORE 0.157: per-logical-CPU data points emitted (one per CPU core × state combination)
+  - AFTER 0.157:  data points aggregated across all logical CPUs (one per state)
+
+  This reduces cardinality but removes per-core visibility by default.
+
+  To restore per-core data points, explicitly configure the metrics under the cpu scraper:
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.time:
+            attributes: [cpu, state]
+          system.cpu.utilization:
+            attributes: [cpu, state]
+
+  Additionally, system.cpu.logical.count is now enabled by default in 0.157. To disable it:
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.logical.count:
+            enabled: false
+
+  Note: This change does NOT affect the signalfx exporter's CPU metric translations.
+description: >-
+  In 0.157, the host_metrics receiver changed the CPU scraper to make the cpu attribute
+  opt-in for system.cpu.time and system.cpu.utilization metrics. These metrics are now
+  aggregated across all logical CPUs by default, removing per-core data points. Users who
+  rely on per-core CPU breakdown in dashboards, alerts, or the signalfx exporter's per-core
+  translations must explicitly configure attributes: [cpu, state] on each affected metric.

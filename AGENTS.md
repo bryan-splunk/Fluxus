@@ -334,7 +334,7 @@ go test -v ./engine/... -run "TestRuleFixtures/P2-01/fires_when_kafka_present"
 
 ## Development Quick Reference
 
-All commands assume you are in the project root (`C:\CodeBaseLocal\Collector upgRAde Process\`).
+All commands assume you are in the project root (`C:\CodeBaseLocal\Fluxus\`).
 The project is on **Windows / PowerShell** — use `.\fluxus.exe` not `./fluxus`.
 
 ```powershell

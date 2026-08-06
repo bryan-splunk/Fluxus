@@ -1,0 +1,58 @@
+id: P1-32
+category: p1
+introduced: "0.157"
+title: "filter and transform Processor defaultErrorModeIgnore Gates Promoted to Stable"
+look_for:
+  - raw_pattern: "(?m)-processor\\.(?:filter|transform)\\.defaultErrorModeIgnore"
+migration:
+  strategy: guided
+  before: |
+    # Startup flag used to revert error_mode behavior (no longer works in 0.157+):
+    # --feature-gates=-processor.filter.defaultErrorModeIgnore
+    # --feature-gates=-processor.transform.defaultErrorModeIgnore
+  after: |
+    # Remove the --feature-gates revert flag from startup scripts / systemd units / Helm values.
+    # Add explicit error_mode: propagate to each processor instance that must retain the old behavior:
+    processors:
+      filter/my_filter:
+        error_mode: propagate   # explicitly opt in to propagate behavior
+        traces:
+          span:
+            - 'attributes["env"] == "prod"'
+
+      transform/my_transform:
+        error_mode: propagate   # explicitly opt in to propagate behavior
+        metric_statements:
+          - context: metric
+            statements:
+              - set(name, "new_name") where name == "old_name"
+guidance: |
+  The processor.filter.defaultErrorModeIgnore and processor.transform.defaultErrorModeIgnore
+  feature gates were promoted to stable in 0.157. Stable gates cannot be overridden with
+  --feature-gates; any startup flag using -processor.filter.defaultErrorModeIgnore or
+  -processor.transform.defaultErrorModeIgnore to revert to propagate behavior will now cause
+  a startup failure.
+
+  Both gates moved to beta in 0.153 (default: ignore instead of propagate). In 0.157 they are
+  permanently stable — the ignore default is now the only behavior for these processors.
+
+  To preserve propagate behavior for a specific processor instance, add error_mode: propagate
+  explicitly to that processor's config block. This must be done for each named instance
+  (e.g. filter/prod, transform/metrics) that needs the old behavior.
+
+  Also remove the --feature-gates= flag from all startup scripts, systemd unit files,
+  Helm chart values, Kubernetes DaemonSet command args, or any other place it is set.
+
+  Note: The connector.routing.defaultErrorModeIgnore gate only moved to beta in 0.157 — it
+  can still be disabled with a feature gate flag if needed. See P2-43 for routing connector
+  error_mode guidance.
+description: >-
+  In 0.157, the processor.filter.defaultErrorModeIgnore and processor.transform.defaultErrorModeIgnore
+  feature gates were promoted to stable. Stable gates cannot be disabled via --feature-gates;
+  any startup configuration using -processor.filter.defaultErrorModeIgnore or
+  -processor.transform.defaultErrorModeIgnore to revert to propagate behavior will cause the
+  collector to fail at startup. The gates were first promoted to beta in 0.153 (default: ignore).
+  Remove the revert flags and add explicit error_mode: propagate to each processor instance that
+  requires the old error propagation behavior.
+see_also:
+  - P2-43

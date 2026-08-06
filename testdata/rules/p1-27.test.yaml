@@ -1,0 +1,63 @@
+cases:
+  - name: "fires when bundleDir present in smartagent extension"
+    config: |
+      extensions:
+        smartagent:
+          bundleDir: /usr/lib/splunk-otel-collector/agent-bundle
+      service:
+        extensions: [smartagent]
+    should_fire: true
+    apply_contains:
+      - "P1-27 UPGRADE v0.154"
+    apply_not_contains:
+      - "bundleDir:"
+
+  - name: "fires when collectd block present in smartagent extension"
+    config: |
+      extensions:
+        smartagent:
+          collectd:
+            configDir: /var/run/splunk-otel-collector/collectd
+            logLevel: err
+      service:
+        extensions: [smartagent]
+    should_fire: true
+    apply_contains:
+      - "P1-27 UPGRADE v0.154"
+    apply_not_contains:
+      - "configDir:"
+
+  - name: "fires when both bundleDir and collectd present"
+    config: |
+      extensions:
+        smartagent:
+          bundleDir: /usr/lib/splunk-otel-collector/agent-bundle
+          collectd:
+            configDir: /var/run/splunk-otel-collector/collectd
+            logLevel: err
+            intervalSeconds: 10
+      service:
+        extensions: [smartagent]
+    should_fire: true
+    apply_contains:
+      - "P1-27 UPGRADE v0.154"
+
+  - name: "silent when smartagent extension has neither bundleDir nor collectd"
+    config: |
+      extensions:
+        smartagent: {}
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+      service:
+        extensions: [smartagent]
+    should_fire: false
+
+  - name: "silent when no smartagent extension at all"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

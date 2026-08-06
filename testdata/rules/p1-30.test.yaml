@@ -1,0 +1,60 @@
+cases:
+  - name: "fires when smartagent receiver has signalfx-forwarder monitor"
+    config: |
+      receivers:
+        smartagent:
+          monitors:
+            - type: signalfx-forwarder
+              listenAddress: 0.0.0.0:9080
+      service:
+        pipelines:
+          metrics:
+            receivers: [smartagent]
+    should_fire: true
+    apply_contains:
+      - "P1-30 UPGRADE v0.155"
+      - "CORRECT migration path"
+
+  - name: "fires when smartagent receiver has trace-forwarder monitor"
+    config: |
+      receivers:
+        smartagent:
+          monitors:
+            - type: trace-forwarder
+              defaultSpanEndpointURL: http://gateway:9943/v1/trace
+      service:
+        pipelines:
+          traces:
+            receivers: [smartagent]
+    should_fire: true
+    apply_contains:
+      - "P1-30 UPGRADE v0.155"
+
+  - name: "fires when both forwarder monitor types present"
+    config: |
+      receivers:
+        smartagent:
+          monitors:
+            - type: signalfx-forwarder
+              listenAddress: 0.0.0.0:9080
+            - type: trace-forwarder
+              defaultSpanEndpointURL: http://gateway:9943/v1/trace
+    should_fire: true
+
+  - name: "silent when smartagent has no forwarder monitors"
+    config: |
+      receivers:
+        smartagent:
+          monitors:
+            - type: cpu
+            - type: memory
+    should_fire: false
+
+  - name: "silent when no smartagent receiver"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+    should_fire: false

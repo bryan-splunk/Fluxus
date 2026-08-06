@@ -1,0 +1,59 @@
+id: P2-41
+category: p2
+introduced: "0.156"
+title: "prometheus Receiver — IgnoreScopeInfoMetric Gate Promoted to Beta"
+look_for:
+  - path: $.receivers.prometheus
+    match: exists
+  - path: $.receivers.prometheus
+    match: exists
+    in_comments: true
+migration:
+  strategy: inform_only
+  key_moves:
+    - comment_path: $.receivers.prometheus
+      comment_once: true
+      comment_text: |
+        # UPGRADE(P2-41 v0.156): receiver.prometheusreceiver.IgnoreScopeInfoMetric gate moved to beta.
+        # The otel_scope_info metric is now IGNORED for scope attribute extraction by default.
+        # If dashboards or pipelines rely on otel_scope_info metrics, disable the gate:
+        #   --feature-gates=-receiver.prometheusreceiver.IgnoreScopeInfoMetric
+        # This can still be disabled in 0.156 but the flag may be removed in a future release.
+  before: |
+    receivers:
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: my-app
+              static_configs:
+                - targets: [localhost:9090]
+  after: |
+    # No YAML config change needed if you do not rely on otel_scope_info metrics.
+    # To restore previous behavior add to collector startup:
+    #   --feature-gates=-receiver.prometheusreceiver.IgnoreScopeInfoMetric
+    receivers:
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: my-app
+              static_configs:
+                - targets: [localhost:9090]
+guidance: |
+  In 0.156, the receiver.prometheusreceiver.IgnoreScopeInfoMetric feature gate was promoted to
+  beta, making it the new default behavior. The otel_scope_info metric is now ignored during
+  scope attribute extraction.
+
+  No YAML config changes are required if your pipelines and dashboards do not use otel_scope_info
+  metrics for attribute extraction.
+
+  If you rely on otel_scope_info metrics, temporarily disable the gate on collector startup:
+    --feature-gates=-receiver.prometheusreceiver.IgnoreScopeInfoMetric
+
+  Note: this gate is at beta stability and can still be disabled in 0.156. It may be promoted
+  to stable in a future release at which point the revert flag will stop working.
+description: >-
+  In 0.156, the receiver.prometheusreceiver.IgnoreScopeInfoMetric feature gate was promoted to
+  beta. The otel_scope_info metric is now ignored for scope attribute extraction by default.
+  This does not require YAML config changes unless downstream pipelines or dashboards rely on
+  otel_scope_info metrics. To temporarily restore the previous behavior, disable the gate with
+  --feature-gates=-receiver.prometheusreceiver.IgnoreScopeInfoMetric.

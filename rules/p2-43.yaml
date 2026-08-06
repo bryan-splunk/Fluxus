@@ -1,0 +1,63 @@
+id: P2-43
+category: p2
+introduced: "0.157"
+title: "routing Connector — Default error_mode Changed to ignore"
+look_for:
+  - path: $.connectors.routing
+    match: exists
+  - path: $.connectors.routing
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.connectors.routing
+      comment_once: true
+      comment_text: |
+        # UPGRADE(P2-43 v0.157): routing connector default error_mode changed to 'ignore'.
+        # The connector.routing.defaultErrorModeIgnore gate is now beta (default: ignore).
+        # OTTL evaluation errors in routing conditions are now silently dropped.
+        # ACTION: Add error_mode: propagate if you need errors to surface:
+        #   connectors:
+        #     routing:
+        #       error_mode: propagate
+        #       table: [...]
+        # Gate can still be disabled: --feature-gates=-connector.routing.defaultErrorModeIgnore
+  before: |
+    connectors:
+      routing:
+        default_pipelines: [traces/default]
+        table:
+          - statement: route() where attributes["env"] == "prod"
+            pipelines: [traces/prod]
+  after: |
+    # Add error_mode: propagate if you need routing errors to surface:
+    connectors:
+      routing:
+        error_mode: propagate   # explicit opt-in to propagate behavior
+        default_pipelines: [traces/default]
+        table:
+          - statement: route() where attributes["env"] == "prod"
+            pipelines: [traces/prod]
+guidance: |
+  In 0.157, the connector.routing.defaultErrorModeIgnore feature gate was promoted to beta,
+  changing the routing connector's default error_mode from propagate to ignore.
+
+  Impact: OTTL evaluation errors in routing conditions (e.g. attribute lookup failures) are
+  now silently swallowed. Telemetry that fails routing evaluation is dropped without any
+  visible error signal.
+
+  To restore propagate behavior and ensure routing errors are visible, add error_mode: propagate
+  explicitly to the routing connector config.
+
+  Unlike the filter and transform processors (whose gates are stable in 0.157), the routing
+  connector gate is only at beta and can still be disabled with:
+    --feature-gates=-connector.routing.defaultErrorModeIgnore
+description: >-
+  In 0.157, the connector.routing.defaultErrorModeIgnore feature gate was promoted to beta,
+  changing the routing connector's default error_mode from propagate to ignore. OTTL evaluation
+  errors in routing conditions are now silently ignored by default. Users who need routing errors
+  to surface for debugging or alerting should add error_mode: propagate explicitly to their
+  routing connector config.
+see_also:
+  - P1-32

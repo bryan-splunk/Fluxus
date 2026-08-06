@@ -1,4 +1,4 @@
-# Splunk OTel Collector Upgrade Knowledge Base — v0.120 → v0.153
+# Splunk OTel Collector Upgrade Knowledge Base — v0.120 → v0.157
 
 ## How to Use This Knowledge Base
 
@@ -1145,10 +1145,15 @@ These do not cause immediate failures. Migration is recommended before aliases a
 | connector | `spanmetrics` | `span_metrics` | 0.151 |
 | connector | `servicegraph` | `service_graph` | 0.151 |
 | exporter | `loadbalancing` | `load_balancing` | 0.153 |
+| receiver | `windowsservice` | `windows_service` | 0.154 |
+| exporter | `prometheusremotewrite` | `prometheus_remote_write` | 0.154 |
+| receiver | `apachespark` | `apache_spark` | 0.154 |
+| receiver | `awscloudwatch` | `aws_cloudwatch` | 0.156 |
+| processor | `cumulativetodelta` | `cumulative_to_delta` | 0.157 |
 
-**Not renamed** (confirmed clean through v0.153): `windowsservices`, `vcenter`, `jaeger`, `otlp`,
+**Not renamed** (confirmed clean through v0.157): `vcenter`, `jaeger`, `otlp`,
 `zipkin`, `prometheus`, `smartagent`, `nop`, `splunk_hec`, `otlphttp`, `signalfx` (exporter),
-`batch`, `memory_limiter`, `resource`, `attributes`, `filter`.
+`batch`, `memory_limiter`, `resource`, `attributes`, `filter`, `routing`, `count`, `forward`.
 
 ---
 
@@ -2275,4 +2280,534 @@ only appear at runtime.
 
 **Action:** No config change required. Be aware that `otelcol validate` is no longer
 sufficient to detect K8s API availability issues; test with a live cluster instead.
+
+---
+
+## NEW CHANGES — v0.154–v0.157
+
+---
+
+## P1 Breaking Changes — v0.154–v0.157
+
+---
+
+### P1-27 · Smart Agent Extension — collectd Block and bundleDir Removed (0.154)
+
+**Look for:** `bundleDir:` or `collectd:` sub-key under `extensions.smartagent:`.
+
+**Impact:** The Splunk OTel Collector removed the entire agent bundle (bundled collectd, Python
+runtime, and Java runtime) from all packages and container images in 0.154. The `bundleDir` field
+and the `collectd:` sub-block in the Smart Agent Extension now cause a startup failure.
+
+**Action:** Remove `bundleDir:` and the `collectd:` block from the smartagent extension config.
+Migrate collectd-based monitors and Python-based monitors to native OpenTelemetry receivers or
+Prometheus-compatible exporters. See P1-28 for the jmx monitor migration and P1-29 for the hana
+monitor migration.
+
+**Before:**
+```yaml
+extensions:
+  smartagent:
+    bundleDir: /usr/lib/splunk-otel-collector/agent-bundle
+    collectd:
+      configDir: /var/run/splunk-otel-collector/collectd
+      logLevel: err
+      intervalSeconds: 10
+```
+
+**After:**
+```yaml
+extensions:
+  smartagent: {}
+```
+
+---
+
+### P1-28 · Smart Agent jmx Monitor Removed (0.154)
+
+**Look for:** `type: jmx` inside the `smartagent` receiver's `monitors` list.
+
+**Impact:** The `jmx` Smart Agent monitor depended on the bundled Java runtime, which was removed
+in 0.154. JMX metrics are no longer collected after upgrading.
+
+**Action:** Migrate to the `jmx` receiver from opentelemetry-collector-contrib. Requires a
+host Java runtime (JRE 11+) and the opentelemetry-java-contrib JMX metrics gatherer jar installed
+separately. Download from: https://github.com/open-telemetry/opentelemetry-java-contrib/releases
+
+**Before:**
+```yaml
+receivers:
+  smartagent:
+    monitors:
+      - type: jmx
+        host: localhost
+        port: 1099
+        serviceURL: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
+```
+
+**After:**
+```yaml
+receivers:
+  jmx:
+    jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
+    endpoint: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
+    target_system: jvm
+    collection_interval: 10s
+```
+
+---
+
+### P1-29 · Smart Agent hana Monitor Removed (0.154)
+
+**Look for:** `type: hana` inside the `smartagent` receiver's `monitors` list.
+
+**Impact:** The `hana` Smart Agent monitor was deprecated and removed in 0.154. SAP HANA metrics
+are no longer collected after upgrading.
+
+**Action:** Migrate to the `saphana` receiver from opentelemetry-collector-contrib. For custom
+SAP HANA SQL queries, use the `sqlquery` receiver.
+
+**Before:**
+```yaml
+receivers:
+  smartagent:
+    monitors:
+      - type: hana
+        host: hana-host
+        port: 39041
+        username: monitoring_user
+        password: "${env:HANA_PASSWORD}"
+```
+
+**After:**
+```yaml
+receivers:
+  saphana:
+    endpoint: hana-host:39041
+    username: monitoring_user
+    password: "${env:HANA_PASSWORD}"
+    collection_interval: 60s
+```
+
+---
+
+### P1-30 · Smart Agent signalfx-forwarder and trace-forwarder Monitors Removed (0.155)
+
+**Look for:** `type: signalfx-forwarder` or `type: trace-forwarder` inside the `smartagent`
+receiver's `monitors` list.
+
+**Impact:** Both monitors were removed in 0.155. SignalFx-format telemetry being forwarded
+through these listeners will stop flowing after upgrading.
+
+**IMPORTANT — Release Note Correction:** The v0.155 release notes incorrectly suggest using
+the `signalfxreceiver` as the replacement. The `signalfx` receiver (`receivers.signalfx:`) was
+**permanently removed** from the Splunk OTel Collector distribution in v0.153 (P1-04). Configuring
+it will cause a startup failure. **Do not follow the v0.155 release note guidance.**
+
+**Correct Action:**
+1. Remove the `signalfx-forwarder` and `trace-forwarder` monitor entries from the monitors list.
+2. Reconfigure any agents or applications that were pushing SignalFx-format data to the forwarder
+   listener to emit OTLP instead (gRPC port 4317 or HTTP port 4318).
+3. Add an `otlp` receiver to the collector to receive the migrated telemetry.
+
+**Before:**
+```yaml
+receivers:
+  smartagent:
+    monitors:
+      - type: signalfx-forwarder
+        listenAddress: 0.0.0.0:9080
+      - type: trace-forwarder
+        defaultSpanEndpointURL: http://gateway:9943/v1/trace
+```
+
+**After:**
+```yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+```
+
+---
+
+### P1-31 · jmx Receiver Removed from Splunk Distribution (0.157)
+
+**Look for:** `receivers.jmx:` in any collector config.
+
+**Impact:** The upstream `jmx` receiver was deprecated and removed from the Splunk OTel Collector
+distribution in 0.157. The bundled JMX Metrics Gatherer JAR is also no longer included in any
+packaging artifact (Docker images, MSI, DEB, RPM, tar). Configs using the jmx receiver will fail
+to start after upgrading.
+
+**Action:** Migrate to the standalone `jmx-scraper` tool from opentelemetry-java-contrib. Run
+jmx-scraper as a sidecar or separate process, set `OTEL_EXPORTER_OTLP_ENDPOINT` to the
+collector's OTLP gRPC endpoint (port 4317), and configure an `otlp` receiver on the collector.
+
+Download jmx-scraper: https://github.com/open-telemetry/opentelemetry-java-contrib/releases
+
+**Before:**
+```yaml
+receivers:
+  jmx:
+    jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
+    endpoint: service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi
+    target_system: cassandra
+    collection_interval: 10s
+```
+
+**After (jmx-scraper invocation + otlp receiver):**
+```bash
+# Run jmx-scraper as a sidecar:
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
+java -jar jmx-scraper.jar \
+  --otel.jmx.target.system=cassandra \
+  --otel.jmx.service.url=service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi
+```
+```yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+```
+
+---
+
+### P1-32 · filter and transform Processor defaultErrorModeIgnore Gates Promoted to Stable (0.157)
+
+**Look for:** `--feature-gates=-processor.filter.defaultErrorModeIgnore` or
+`--feature-gates=-processor.transform.defaultErrorModeIgnore` in startup scripts, systemd unit
+files, Helm values, or any place collector flags are configured.
+
+**Impact:** Both gates were promoted to stable in 0.157. Stable gates cannot be disabled via
+`--feature-gates`. Any startup configuration using the revert flag will cause the collector to
+fail to start. The `ignore` default for `error_mode` is now permanent for these processors.
+
+Background: The gates moved to beta in 0.153 (default changed from `propagate` to `ignore`).
+In 0.157, they became stable — the revert flag no longer works.
+
+**Action:**
+1. Remove the `--feature-gates=-processor.filter.defaultErrorModeIgnore` and
+   `--feature-gates=-processor.transform.defaultErrorModeIgnore` flags from startup configuration.
+2. For each processor instance that must retain `propagate` behavior, add `error_mode: propagate`
+   explicitly to its config block.
+
+**Before:**
+```bash
+# Startup flag (no longer accepted in 0.157+):
+--feature-gates=-processor.filter.defaultErrorModeIgnore
+```
+
+**After:**
+```yaml
+processors:
+  filter/my_filter:
+    error_mode: propagate   # explicit opt-in to propagate behavior
+    traces:
+      span:
+        - 'attributes["env"] == "prod"'
+```
+
+---
+
+## P2 Degrading Changes — v0.154–v0.157
+
+---
+
+### P2-36 · kafka Receiver — group_rebalance_strategy Deprecated (0.154)
+
+**Look for:** `receivers.kafka.group_rebalance_strategy:` in any collector config.
+
+**Impact:** The `group_rebalance_strategy` field logs a deprecation warning on every startup.
+Setting both `group_rebalance_strategy` and `group_rebalance_strategies` simultaneously causes
+a validation failure at startup.
+
+**Action:** Rename `group_rebalance_strategy:` to `group_rebalance_strategies:` and wrap its
+value in a YAML sequence.
+
+**Before:**
+```yaml
+receivers:
+  kafka:
+    group_rebalance_strategy: sticky
+```
+
+**After:**
+```yaml
+receivers:
+  kafka:
+    group_rebalance_strategies:
+      - sticky
+```
+
+---
+
+### P2-37 · memory_limiter Processor Internal Metrics Renamed (0.155)
+
+**Look for:** Dashboards, alerts, or queries referencing memory_limiter metrics without the
+`processor_memory_limiter` prefix.
+
+**Impact:** No YAML config change required. Dashboards, alerts, or saved searches that reference
+the old memory_limiter metric names will stop matching after upgrading to 0.155.
+
+**Action:** Update Splunk Observability Cloud dashboards, alerts, and queries to use the new
+`otelcol_processor_memory_limiter_*` prefixed metric names.
+
+---
+
+### P2-38 · oracledb Receiver — db.namespace Semantic Change (0.155)
+
+**Look for:** Any config with `receivers.oracledb:`.
+
+**Impact:** The `db.namespace` attribute emitted by the oracledb receiver changed its semantic
+meaning in 0.155. No YAML config change required.
+
+**Action:** Review and update any Splunk Observability Cloud dashboards, alerts, or queries that
+filter, group, or split on the `db.namespace` attribute to reflect the new value semantics.
+
+---
+
+### P2-39 · signalfx Exporter — Per-Core CPU Metrics Removed from Default Translations (0.155)
+
+**Look for:** `exporters.signalfx.include_metrics:` containing per-core CPU metric names with
+`dimensions.cpu` filters (e.g. `cpu.idle`, `cpu.utilization_per_core`).
+
+**Impact:** The signalfx exporter no longer calculates per-core `cpu.*` metrics from its default
+translation rules, even when explicitly enabled via `include_metrics`. Aggregate CPU metrics are
+still produced. This only affects users who explicitly enabled per-core metrics.
+
+**Action:** Add a `transform` processor to re-derive per-core CPU metrics from `system.cpu.time`
+using OTTL `copy_metric` and `aggregate_on_attributes` functions. See the rule YAML for the full
+example config. Enable `system.cpu.time` with `attributes: [cpu, state]` in the `hostmetrics`
+receiver.
+
+---
+
+### P2-40 · oracledb Receiver — V$SQL_PLAN_STATISTICS_ALL Privilege Required (0.156)
+
+**Look for:** Any config with `receivers.oracledb:`.
+
+**Impact:** The oracledb receiver switched SQL query plan collection from `V$SQL_PLAN` to
+`V$SQL_PLAN_STATISTICS_ALL` in 0.156. Deployments that only grant `SELECT` access on `V$SQL_PLAN`
+will experience query plan collection failures (ORA-00942) at runtime. Other metrics continue
+to be collected normally.
+
+**Action (DBA task):** Grant the required privilege to the collector monitoring user:
+```sql
+GRANT SELECT ON SYS.V_$SQL_PLAN_STATISTICS_ALL TO <monitoring_user>;
+-- OR the broader privilege:
+GRANT SELECT ANY DICTIONARY TO <monitoring_user>;
+```
+
+---
+
+### P2-41 · prometheus Receiver — IgnoreScopeInfoMetric Gate Promoted to Beta (0.156)
+
+**Look for:** Any config with `receivers.prometheus:`.
+
+**Impact:** The `receiver.prometheusreceiver.IgnoreScopeInfoMetric` feature gate was promoted to
+beta in 0.156, making it the new default. The `otel_scope_info` metric is now ignored for scope
+attribute extraction by default. Pipelines or dashboards relying on `otel_scope_info` metrics
+will stop seeing them.
+
+**Action:** If you rely on `otel_scope_info` metrics, temporarily disable the gate:
+```
+--feature-gates=-receiver.prometheusreceiver.IgnoreScopeInfoMetric
+```
+Note: This gate can still be disabled in 0.156 but may become stable in a future release.
+
+---
+
+### P2-42 · host_metrics Receiver — cpu Attribute Now Opt-In (0.157)
+
+**Look for:** `receivers.host_metrics.scrapers.cpu:` (or `receivers.hostmetrics.scrapers.cpu:`).
+
+**Impact:** `system.cpu.time` and `system.cpu.utilization` are now aggregated across all logical
+CPUs by default in 0.157 — individual per-core data points are no longer emitted unless explicitly
+configured. Dashboards that relied on per-core CPU breakdown will stop showing per-core data.
+
+Additionally, `system.cpu.logical.count` is now enabled by default in 0.157.
+
+**Action:** To restore per-core data points, add explicit attribute configuration:
+```yaml
+receivers:
+  host_metrics:
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.time:
+            attributes: [cpu, state]
+          system.cpu.utilization:
+            attributes: [cpu, state]
+```
+
+To disable the new `system.cpu.logical.count` metric:
+```yaml
+          system.cpu.logical.count:
+            enabled: false
+```
+
+Note: This change does **not** affect the signalfx exporter's CPU metric translations.
+
+---
+
+### P2-43 · routing Connector — Default error_mode Changed to ignore (0.157)
+
+**Look for:** Any config with `connectors.routing:`.
+
+**Impact:** The `connector.routing.defaultErrorModeIgnore` feature gate was promoted to beta in
+0.157, changing the routing connector's default `error_mode` from `propagate` to `ignore`. OTTL
+evaluation errors in routing conditions (e.g. attribute lookup failures) are now silently dropped
+instead of being propagated. Telemetry that fails routing evaluation is silently discarded.
+
+**Action:** If you need routing errors to surface, add `error_mode: propagate` explicitly:
+```yaml
+connectors:
+  routing:
+    error_mode: propagate
+    table:
+      - statement: route() where attributes["env"] == "prod"
+        pipelines: [traces/prod]
+```
+
+Note: Unlike the filter/transform processors (stable in 0.157), this gate is at beta and can
+still be disabled: `--feature-gates=-connector.routing.defaultErrorModeIgnore`
+
+---
+
+## P3 Advisory Changes — v0.154–v0.157
+
+---
+
+### P3-15 · resourcedetection Processor — k8snode Detector Renamed to k8s_api (0.154)
+
+**Look for:** `k8snode` in the `detectors:` list under the `resource_detection` (or
+`resourcedetection`) processor.
+
+**Impact:** The `k8snode` detector is deprecated and renamed to `k8s_api`. Both currently produce
+identical output. Using the old name logs a deprecation warning. The alias will be removed in a
+future release.
+
+**Action:** Rename `k8snode` to `k8s_api` in the detectors list. Also rename any `k8snode:`
+config sub-key to `k8s_api:`. Keeping the old sub-key name under the new detector name silently
+applies defaults instead of your configured values.
+
+**Before:**
+```yaml
+processors:
+  resource_detection:
+    detectors: [env, k8snode]
+    k8snode:
+      node_from_env_var: K8S_NODE_NAME
+```
+
+**After:**
+```yaml
+processors:
+  resource_detection:
+    detectors: [env, k8s_api]
+    k8s_api:
+      node_from_env_var: K8S_NODE_NAME
+```
+
+---
+
+### P3-16 · signalfx Exporter — Trace Functionality Deprecated (0.154)
+
+**Look for:** `signalfx` exporter present AND a `traces` pipeline exists in the config.
+
+**Impact:** The signalfx exporter's trace functionality was deprecated in 0.154 and will be
+**removed in December 2026**. After removal, configs with signalfx in a traces pipeline will
+fail to start. Trace correlation in Splunk Observability Cloud now works through OTLP alone.
+
+**Action:** Remove the signalfx exporter from all `traces` pipelines. Add an `otlp` exporter
+pointing to the Splunk APM ingest endpoint for traces:
+```yaml
+exporters:
+  otlp/splunk_apm:
+    endpoint: ingest.<realm>.signalfx.com:443
+    headers:
+      X-SF-TOKEN: "${env:SPLUNK_ACCESS_TOKEN}"
+```
+The signalfx exporter remains valid and supported for `metrics` pipelines.
+
+---
+
+### P3-17 · Splunk timestamp Processor Deprecated (0.156)
+
+**Look for:** `processors.timestamp:` in any collector config.
+
+**Impact:** The Splunk-specific `timestamp` processor was deprecated in 0.156 in favor of
+the upstream `transform` processor with OTTL statements. The processor still works but will be
+removed in a future release.
+
+**Action:** Migrate to the `transform` processor using OTTL time functions. Refer to
+`docs/deprecations/timestampprocessor.md` for specific OTTL equivalents for your use case.
+
+```yaml
+# Example equivalent using transform processor:
+processors:
+  transform/timestamps:
+    log_statements:
+      - context: log
+        statements:
+          - set(time, TruncateTime(time, Duration("1s")))
+```
+
+---
+
+### P3-18 · routing Connector — request Context Deprecated (0.156)
+
+**Look for:** `context: request` or `request["key"]` conditions inside `connectors.routing.table`.
+
+**Impact:** The routing connector `request` context and `request["key"]` condition syntax were
+deprecated in 0.156. A warning is logged at runtime when the `request` context is still
+configured. The syntax will be removed in a future release.
+
+**Action:** Replace `request["key"]` conditions with the new `otelcol.*` OTTL paths:
+
+**Before:**
+```yaml
+connectors:
+  routing:
+    table:
+      - context: request
+        statement: route() where request["X-Tenant-ID"] == "prod"
+        pipelines: [traces/prod]
+```
+
+**After:**
+```yaml
+connectors:
+  routing:
+    table:
+      # For HTTP client metadata:
+      - statement: route() where otelcol.client.metadata["X-Tenant-ID"][0] == "prod"
+        pipelines: [traces/prod]
+      # For gRPC metadata:
+      - statement: route() where otelcol.grpc.metadata["X-Tenant-ID"][0] == "prod"
+        pipelines: [traces/prod]
+```
+
+---
+
+### P3-01 Update · Additional Component Renames (v0.154–v0.157)
+
+The following component renames were added in v0.154–v0.157 (see the full P3-01 rename table):
+
+| Type | Old name | New name | Since |
+|---|---|---|---|
+| receiver | `windowsservice` | `windows_service` | 0.154 |
+| exporter | `prometheusremotewrite` | `prometheus_remote_write` | 0.154 |
+| receiver | `apachespark` | `apache_spark` | 0.154 |
+| receiver | `awscloudwatch` | `aws_cloudwatch` | 0.156 |
+| processor | `cumulativetodelta` | `cumulative_to_delta` | 0.157 |
+
+All deprecated aliases still work but will be removed in a future release.
+
+---
 

@@ -1,0 +1,37 @@
+cases:
+  - name: "fires when prometheus receiver is present"
+    config: |
+      receivers:
+        prometheus:
+          config:
+            scrape_configs:
+              - job_name: my-app
+                static_configs:
+                  - targets: [localhost:9090]
+      service:
+        pipelines:
+          metrics:
+            receivers: [prometheus]
+    should_fire: true
+    apply_contains:
+      - "P2-41 v0.156"
+      - "IgnoreScopeInfoMetric"
+
+  - name: "fires for named prometheus instance"
+    config: |
+      receivers:
+        prometheus/apps:
+          config:
+            scrape_configs:
+              - job_name: app-metrics
+                static_configs:
+                  - targets: [app:8080]
+    should_fire: true
+
+  - name: "silent when no prometheus receiver"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

@@ -1,0 +1,40 @@
+cases:
+  - name: "fires when timestamp processor is present"
+    config: |
+      processors:
+        timestamp:
+          round_to_nearest: 1s
+      service:
+        pipelines:
+          logs:
+            processors: [timestamp]
+    should_fire: true
+    apply_contains:
+      - "P3-17 UPGRADE v0.156"
+      - "timestamp processor DEPRECATED"
+
+  - name: "fires when timestamp processor has offset config"
+    config: |
+      processors:
+        timestamp:
+          round_to_nearest: 10s
+          offset_duration: -5s
+    should_fire: true
+
+  - name: "silent when no timestamp processor"
+    config: |
+      processors:
+        transform:
+          log_statements:
+            - context: log
+              statements:
+                - set(time, TruncateTime(time, Duration("1s")))
+    should_fire: false
+
+  - name: "silent when no processors at all"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

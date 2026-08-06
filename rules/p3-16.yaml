@@ -1,0 +1,75 @@
+id: P3-16
+category: p3
+introduced: "0.154"
+title: "signalfx Exporter — Trace Functionality Deprecated"
+look_for:
+  - path: $.exporters.signalfx
+    match: exists
+  - path: $.service.pipelines.traces
+    match: exists
+logic: and
+migration:
+  strategy: inform_only
+  key_moves:
+    - comment_path: $.exporters.signalfx
+      comment_once: true
+      comment_text: |
+        # [P3-16 UPGRADE v0.154] signalfx exporter trace functionality DEPRECATED.
+        # Trace correlation no longer requires the signalfx exporter in trace pipelines.
+        # Sending traces via OTLP is now sufficient to enable trace correlation.
+        # All trace functionality and configuration will be REMOVED from this exporter in December 2026.
+        # ACTION: Remove signalfx from any trace pipelines and send traces via OTLP exporter only.
+  before: |
+    exporters:
+      signalfx:
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+        api_url: "https://api.us1.signalfx.com"
+        ingest_url: "https://ingest.us1.signalfx.com"
+
+    service:
+      pipelines:
+        traces:
+          exporters: [signalfx, otlp]   # signalfx in traces pipeline (deprecated)
+        metrics:
+          exporters: [signalfx]
+  after: |
+    exporters:
+      signalfx:
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+        api_url: "https://api.us1.signalfx.com"
+        ingest_url: "https://ingest.us1.signalfx.com"
+      otlp/splunk_apm:
+        endpoint: ingest.us1.signalfx.com:443
+        headers:
+          X-SF-TOKEN: "${env:SPLUNK_ACCESS_TOKEN}"
+
+    service:
+      pipelines:
+        traces:
+          exporters: [otlp/splunk_apm]   # signalfx removed from trace pipeline
+        metrics:
+          exporters: [signalfx]           # signalfx still valid for metrics
+guidance: |
+  Remove the signalfx exporter from trace pipelines and migrate traces to the OTLP exporter.
+
+  The signalfx exporter's trace functionality was deprecated in 0.154 and will be removed in
+  December 2026. Trace correlation in Splunk Observability Cloud no longer requires the signalfx
+  exporter — sending traces via OTLP is sufficient.
+
+  Migration steps:
+  1. Add an otlp exporter pointing to the Splunk APM ingest endpoint:
+     exporters:
+       otlp/splunk_apm:
+         endpoint: ingest.<realm>.signalfx.com:443
+         headers:
+           X-SF-TOKEN: "${env:SPLUNK_ACCESS_TOKEN}"
+
+  2. Remove signalfx from the exporters list in all trace pipelines.
+
+  3. The signalfx exporter can remain in metrics pipelines — only trace functionality is deprecated.
+description: >-
+  In 0.154, the signalfx exporter's trace functionality was deprecated. All trace configuration
+  and support will be removed from the signalfx exporter in December 2026. Trace correlation in
+  Splunk Observability Cloud now works through OTLP alone. Remove the signalfx exporter from
+  all trace pipelines and use the otlp exporter to send traces to the Splunk APM ingest endpoint.
+  The signalfx exporter remains valid for metrics pipelines.

@@ -1,0 +1,41 @@
+cases:
+  - name: "fires when kafka receiver has group_rebalance_strategy"
+    config: |
+      receivers:
+        kafka:
+          brokers: [kafka:9092]
+          topic: otel-metrics
+          group_rebalance_strategy: sticky
+      service:
+        pipelines:
+          metrics:
+            receivers: [kafka]
+    should_fire: true
+    apply_contains:
+      - "P2-36 v0.154"
+      - "group_rebalance_strategy"
+
+  - name: "fires for various rebalance strategy values"
+    config: |
+      receivers:
+        kafka:
+          brokers: [kafka:9092]
+          group_rebalance_strategy: roundrobin
+    should_fire: true
+
+  - name: "silent when already using group_rebalance_strategies"
+    config: |
+      receivers:
+        kafka:
+          brokers: [kafka:9092]
+          group_rebalance_strategies:
+            - sticky
+    should_fire: false
+
+  - name: "silent when no kafka receiver"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

@@ -46,6 +46,67 @@ cases:
         spanmetrics: {}
     should_fire: true
 
+  - name: "fires when windowsservice present (v0.154 rename)"
+    config: |
+      receivers:
+        windowsservice: {}
+      service:
+        pipelines:
+          metrics:
+            receivers: [windowsservice]
+    should_fire: true
+    apply_contains:
+      - "windows_service:"
+    apply_not_contains:
+      - "windowsservice:"
+
+  - name: "fires when prometheusremotewrite exporter present (v0.154 rename)"
+    config: |
+      exporters:
+        prometheusremotewrite:
+          endpoint: http://prometheus:9090/api/v1/write
+      service:
+        pipelines:
+          metrics:
+            exporters: [prometheusremotewrite]
+    should_fire: true
+    apply_contains:
+      - "prometheus_remote_write:"
+    apply_not_contains:
+      - "prometheusremotewrite:"
+
+  - name: "fires when apachespark receiver present (v0.154 rename)"
+    config: |
+      receivers:
+        apachespark:
+          endpoint: http://spark-master:4040
+    should_fire: true
+    apply_contains:
+      - "apache_spark:"
+
+  - name: "fires when awscloudwatch receiver present (v0.156 rename)"
+    config: |
+      receivers:
+        awscloudwatch:
+          region: us-east-1
+    should_fire: true
+    apply_contains:
+      - "aws_cloudwatch:"
+
+  - name: "fires when cumulativetodelta processor present (v0.157 rename)"
+    config: |
+      processors:
+        cumulativetodelta: {}
+      service:
+        pipelines:
+          metrics:
+            processors: [cumulativetodelta]
+    should_fire: true
+    apply_contains:
+      - "cumulative_to_delta:"
+    apply_not_contains:
+      - "cumulativetodelta:"
+
   - name: "silent when only modern snake_case names present"
     config: |
       receivers:

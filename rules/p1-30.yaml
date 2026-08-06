@@ -1,0 +1,88 @@
+id: P1-30
+category: p1
+introduced: "0.155"
+title: "Smart Agent signalfx-forwarder and trace-forwarder Monitors Removed"
+look_for:
+  - path: $.receivers.smartagent
+    match: exists
+  - raw_pattern: "(?m)type:\\s+(?:signalfx-forwarder|trace-forwarder)\\s*$"
+logic: and
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.smartagent
+      comment_once: true
+      comment_text: |
+        # [P1-30 UPGRADE v0.155] signalfx-forwarder and trace-forwarder monitors REMOVED.
+        # IMPORTANT: The v0.155 release notes incorrectly suggest using 'signalfxreceiver' as
+        # the replacement. The signalfx receiver was already PERMANENTLY REMOVED from the Splunk
+        # OTel Collector distribution in v0.153 (see P1-04). Do NOT configure receivers.signalfx:.
+        #
+        # CORRECT migration path:
+        # 1. Remove the signalfx-forwarder / trace-forwarder monitor entries below.
+        # 2. Reconfigure any agents/applications that were pushing SignalFx-format metrics or
+        #    traces to the forwarder listener to emit OTLP instead (gRPC port 4317 or HTTP 4318).
+        # 3. Add an otlp receiver to this collector to receive the migrated telemetry:
+        #    receivers:
+        #      otlp:
+        #        protocols:
+        #          grpc:
+        #            endpoint: 0.0.0.0:4317
+        #          http:
+        #            endpoint: 0.0.0.0:4318
+  before: |
+    receivers:
+      smartagent:
+        monitors:
+          - type: signalfx-forwarder
+            listenAddress: 0.0.0.0:9080
+          - type: trace-forwarder
+            defaultSpanEndpointURL: http://gateway:9943/v1/trace
+            defaultMetricEndpointURL: http://gateway:9943/v2/datapoint
+  after: |
+    # signalfx-forwarder and trace-forwarder monitor entries removed manually.
+    # Replace with an otlp receiver on the same host:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]   # update manually
+        traces:
+          receivers: [otlp]   # update manually
+guidance: |
+  Remove the signalfx-forwarder and trace-forwarder monitor entries from the smartagent
+  receiver's monitors list.
+
+  IMPORTANT — Ignore the v0.155 release note guidance: it incorrectly recommends using the
+  signalfxreceiver as a replacement. The signalfx receiver (receivers.signalfx:) was permanently
+  removed from the Splunk OTel Collector distribution in v0.153 (P1-04). Configuring it will
+  cause a startup failure.
+
+  Correct migration:
+  1. Remove the signalfx-forwarder / trace-forwarder monitor entries from the monitors list.
+  2. Identify the agents or applications that were pushing SignalFx-format metrics or traces
+     to the forwarder listener (default port 9080 for metrics, configurable for traces).
+  3. Reconfigure those agents/applications to send OTLP instead:
+     - gRPC: port 4317
+     - HTTP: port 4318
+  4. Add an otlp receiver to the collector config to receive their telemetry.
+
+  The signalfx-forwarder acted as a local proxy that received SignalFx wire-format pushes
+  and forwarded them onward. The OTel equivalent is the otlp receiver — both act as a
+  local ingestion point, but for OTLP format rather than SignalFx format.
+description: >-
+  The signalfx-forwarder and trace-forwarder Smart Agent monitors were deprecated and removed
+  in 0.155. These monitors created local SignalFx-format listeners that received telemetry from
+  other agents or applications and forwarded it onward. The v0.155 release notes incorrectly
+  suggest using the signalfxreceiver as a replacement — that receiver was already permanently
+  removed from the Splunk OTel Collector distribution in v0.153 (P1-04). The correct migration
+  is to reconfigure upstream senders to emit OTLP and use the otlp receiver on the collector.
+see_also:
+  - P1-04

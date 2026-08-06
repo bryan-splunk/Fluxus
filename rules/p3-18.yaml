@@ -1,0 +1,63 @@
+id: P3-18
+category: p3
+introduced: "0.156"
+title: "routing Connector — request Context Deprecated"
+look_for:
+  - path: $.connectors.routing
+    match: exists
+  - raw_pattern: "(?m)context:\\s+request|request\\[\"[^\"]+\"\\]"
+logic: and
+migration:
+  strategy: inform_only
+  key_moves:
+    - comment_path: $.connectors.routing
+      comment_once: true
+      comment_text: |
+        # [P3-18 UPGRADE v0.156] routing connector 'request' context DEPRECATED.
+        # Replace request["key"] conditions with the new OTTL paths:
+        # - HTTP/client metadata: otelcol.client.metadata["key"][0]
+        # - gRPC metadata:        otelcol.grpc.metadata["key"][0]
+        # These paths work in all signal contexts and are documented in:
+        # https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/pkg/ottl/contexts/ottlotelcol/README.md
+        # A warning is logged at runtime when the 'request' context is still configured.
+  before: |
+    connectors:
+      routing:
+        default_pipelines: [traces/default]
+        table:
+          - context: request
+            statement: route() where request["X-Tenant-ID"] == "prod"
+            pipelines: [traces/prod]
+  after: |
+    connectors:
+      routing:
+        default_pipelines: [traces/default]
+        table:
+          - statement: route() where otelcol.client.metadata["X-Tenant-ID"][0] == "prod"
+            pipelines: [traces/prod]
+guidance: |
+  Replace routing conditions that use the request context with the new otelcol.* OTTL paths.
+
+  Old syntax (deprecated, logs warning at runtime):
+    - context: request
+      statement: route() where request["X-Tenant-ID"] == "prod"
+
+  New syntax (use the otelcol.client.metadata or otelcol.grpc.metadata path):
+    # For HTTP client metadata:
+    - statement: route() where otelcol.client.metadata["X-Tenant-ID"][0] == "prod"
+
+    # For gRPC metadata:
+    - statement: route() where otelcol.grpc.metadata["X-Tenant-ID"][0] == "prod"
+
+  These new paths work in all signal contexts (traces, metrics, logs) without specifying
+  a context: field. See the OTelCol OTTL context documentation for full details:
+  https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/pkg/ottl/contexts/ottlotelcol/README.md
+
+  The request context still functions in 0.156 but logs a deprecation warning. It will be
+  removed in a future release.
+description: >-
+  In 0.156, the routing connector's request context and request["key"] condition syntax
+  were deprecated in favor of otelcol.client.metadata["key"][0] (for HTTP/client metadata)
+  and otelcol.grpc.metadata["key"][0] (for gRPC metadata). The new paths work in all signal
+  contexts and do not require a context: field. The request context still works but logs a
+  deprecation warning and will be removed in a future release.

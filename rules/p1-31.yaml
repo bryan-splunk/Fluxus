@@ -1,0 +1,89 @@
+id: P1-31
+category: p1
+introduced: "0.157"
+title: "jmx Receiver Removed from Splunk Distribution"
+look_for:
+  - path: $.receivers.jmx
+    match: exists
+  - path: $.receivers.jmx
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.jmx
+      comment_once: true
+      comment_text: |
+        # [P1-31 UPGRADE v0.157] jmx receiver REMOVED from Splunk OTel Collector distribution.
+        # The upstream jmx receiver has been deprecated and removed. The bundled JMX Metrics
+        # Gatherer JAR is also no longer included in Docker images, MSI, DEB, RPM, and tar packages.
+        # ACTION: Migrate to the standalone 'jmx-scraper' tool from opentelemetry-java-contrib.
+        # Configure jmx-scraper to push metrics via OTLP to this collector's otlp receiver.
+        # Example jmx-scraper invocation (Cassandra):
+        #   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
+        #   java -jar jmx-scraper.jar \
+        #     --otel.jmx.target.system=cassandra \
+        #     --otel.jmx.service.url=service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi
+        # Download: https://github.com/open-telemetry/opentelemetry-java-contrib/releases
+  before: |
+    receivers:
+      jmx:
+        jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
+        endpoint: service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi
+        target_system: cassandra
+        collection_interval: 10s
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [jmx]
+  after: |
+    # jmx receiver removed. Replace with jmx-scraper sending via OTLP:
+    #
+    # 1. Download jmx-scraper from:
+    #    https://github.com/open-telemetry/opentelemetry-java-contrib/releases
+    #
+    # 2. Run jmx-scraper as a sidecar or separate process:
+    #    OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 \
+    #    java -jar jmx-scraper.jar \
+    #      --otel.jmx.target.system=cassandra \
+    #      --otel.jmx.service.url=service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi
+    #
+    # 3. Add otlp receiver to this collector if not already present:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]   # jmx-scraper pushes OTLP metrics here
+guidance: |
+  Remove the jmx receiver configuration and migrate to the standalone jmx-scraper tool from
+  opentelemetry-java-contrib.
+
+  The jmx receiver was deprecated upstream and removed from the Splunk OTel Collector in 0.157.
+  The bundled JMX Metrics Gatherer JAR is also no longer included in any packaging artifact.
+
+  Migration steps:
+  1. Download the jmx-scraper binary from the opentelemetry-java-contrib releases page:
+     https://github.com/open-telemetry/opentelemetry-java-contrib/releases
+  2. Run jmx-scraper as a separate process or sidecar, pointed at your JMX target.
+  3. Set OTEL_EXPORTER_OTLP_ENDPOINT (or otel.exporter.otlp.endpoint) to the collector's
+     OTLP gRPC endpoint (default port 4317).
+  4. Set otel.jmx.target.system to your target type (cassandra, jvm, kafka, etc.).
+  5. Remove the jmx receiver block from the collector config and ensure an otlp receiver
+     is configured to receive the metrics from jmx-scraper.
+
+  For jmx/cassandra auto-discovery integrations: the Cassandra integration is also removed.
+  Use the same jmx-scraper approach with otel.jmx.target.system=cassandra.
+description: >-
+  The jmx receiver was deprecated upstream and removed from the Splunk OTel Collector
+  distribution in 0.157. The bundled JMX Metrics Gatherer JAR is also no longer included in
+  Docker images, MSI, DEB, RPM, or tar packages. Any collector config using the jmx receiver
+  will fail to start after upgrading. Migrate to the standalone jmx-scraper tool from
+  opentelemetry-java-contrib, which pushes JMX metrics via OTLP to the collector's otlp receiver.
+see_also:
+  - P1-28

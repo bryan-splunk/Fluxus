@@ -1,0 +1,52 @@
+cases:
+  - name: "fires when config contains filter gate revert flag"
+    config: |
+      # Startup flags embedded as comment reference:
+      # --feature-gates=-processor.filter.defaultErrorModeIgnore
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+      processors:
+        filter:
+          traces:
+            span:
+              - 'attributes["env"] == "prod"'
+    should_fire: true
+
+  - name: "fires when config contains transform gate revert flag"
+    config: |
+      # Command args: --feature-gates=-processor.transform.defaultErrorModeIgnore
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+      processors:
+        transform:
+          metric_statements:
+            - context: metric
+              statements:
+                - set(name, "new") where name == "old"
+    should_fire: true
+
+  - name: "silent when no feature gate revert flag in config"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+      processors:
+        filter:
+          error_mode: propagate
+          traces:
+            span:
+              - 'attributes["env"] == "prod"'
+    should_fire: false
+
+  - name: "silent when no filter or transform processor present"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

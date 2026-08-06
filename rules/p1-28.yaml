@@ -1,0 +1,78 @@
+id: P1-28
+category: p1
+introduced: "0.154"
+title: "Smart Agent jmx Monitor Removed"
+look_for:
+  - path: $.receivers.smartagent
+    match: exists
+  - raw_pattern: "(?m)type:\\s+jmx\\s*$"
+logic: and
+migration:
+  strategy: guided
+  key_moves:
+    - comment_path: $.receivers.smartagent
+      comment_once: true
+      comment_text: |
+        # [P1-28 UPGRADE v0.154] Smart Agent jmx monitor REMOVED — the bundled Java runtime is gone.
+        # ACTION: Migrate to the 'jmx' receiver from opentelemetry-collector-contrib.
+        # Requirements: a compatible Java runtime (11+) must be installed on the host.
+        # Example config:
+        #   receivers:
+        #     jmx:
+        #       jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
+        #       endpoint: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
+        #       target_system: jvm
+        #       collection_interval: 10s
+        # Download the JMX metrics gatherer jar from:
+        # https://github.com/open-telemetry/opentelemetry-java-contrib/releases
+  before: |
+    extensions:
+      smartagent:
+        bundleDir: /usr/lib/splunk-otel-collector/agent-bundle
+
+    receivers:
+      smartagent:
+        monitors:
+          - type: jmx
+            host: localhost
+            port: 1099
+            serviceURL: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
+  after: |
+    # Replace the jmx Smart Agent monitor with the native jmx receiver:
+    receivers:
+      jmx:
+        jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
+        endpoint: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
+        target_system: jvm
+        collection_interval: 10s
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [jmx]   # update manually
+guidance: |
+  Remove the jmx monitor entry from the smartagent receiver's monitors list and migrate to the
+  native jmx receiver from opentelemetry-collector-contrib.
+
+  The jmx Smart Agent monitor required the bundled Java runtime which was removed in 0.154.
+  The native jmx receiver requires:
+  1. A compatible Java runtime (JRE 11+) installed on the host.
+  2. The opentelemetry-java-contrib JMX metrics gatherer jar downloaded separately.
+     Download from: https://github.com/open-telemetry/opentelemetry-java-contrib/releases
+
+  Key config fields for the native jmx receiver:
+  - jar_path: path to the downloaded JMX metrics gatherer jar
+  - endpoint: JMX service URL (same as the serviceURL from the Smart Agent monitor)
+  - target_system: jvm, kafka, tomcat, wildfly, etc. (replaces the Smart Agent monitor type)
+  - collection_interval: scrape interval (replaces the intervalSeconds setting)
+
+  Note: Also remove the bundleDir from the smartagent extension if present (see P1-27).
+description: >-
+  The jmx Smart Agent monitor was removed in 0.154 along with the bundled Java runtime it
+  required. Any config using 'type: jmx' inside the smartagent receiver's monitors list will
+  fail to produce JMX metrics after upgrading. Migrate to the native jmx receiver from
+  opentelemetry-collector-contrib, which requires a host Java runtime (JRE 11+) and the
+  opentelemetry-java-contrib JMX metrics gatherer jar to be installed separately.
+see_also:
+  - P1-27
+  - P1-31

@@ -1,0 +1,42 @@
+id: P2-37
+category: p2
+introduced: "0.155"
+title: "memory_limiter Processor Internal Metrics Renamed with processor_memory_limiter Prefix"
+look_for:
+  - raw_pattern: "(?m)otelcol_processor_memory_rss|otelcol_processor_memory_heap|otelcol_process_memory_rss|otelcol_process_memory_heap"
+migration:
+  strategy: inform_only
+  before: |
+    # Old metric names (no longer emitted after v0.155):
+    # otelcol_processor_refusing_data
+    # otelcol_processor_accepted_metric_points
+    # (prefixless memory limiter metrics)
+  after: |
+    # New metric names with processor_memory_limiter prefix (v0.155+):
+    # otelcol_processor_memory_limiter_refused_metric_points
+    # otelcol_processor_memory_limiter_accepted_metric_points
+    # otelcol_processor_memory_limiter_hard_limit_mib
+    # otelcol_processor_memory_limiter_soft_limit_mib
+    # otelcol_processor_memory_limiter_current_memory_mib
+guidance: |
+  The memory_limiter processor's internal metrics were renamed in 0.155 to include the
+  processor_memory_limiter prefix, clarifying they are specific to this processor.
+
+  Old metric names (deprecated, no longer emitted):
+  - Metrics without the memory_limiter prefix (e.g. processor-level metrics that were
+    named ambiguously)
+
+  New metric names (0.155+) follow the pattern:
+    otelcol_processor_memory_limiter_<metric_name>
+
+  Action: Update any Splunk Observability Cloud dashboards, alerts, or saved searches that
+  reference the old memory_limiter metric names to use the new prefixed names.
+
+  No changes are required in the collector YAML configuration itself — this is a monitoring
+  and dashboard concern only.
+description: >-
+  In 0.155, the memory_limiter processor's internal metrics were renamed to include the
+  otelcol_processor_memory_limiter_ prefix, removing ambiguity about which processor they
+  belong to. This does not require changes to the collector YAML configuration, but any
+  dashboards, alerts, or queries that reference the old metric names must be updated to
+  use the new prefixed names.

@@ -1,0 +1,28 @@
+cases:
+  - name: "fires when oracledb receiver is present"
+    config: |
+      receivers:
+        oracledb:
+          endpoint: oracle://monitoring_user:${env:ORACLE_PASSWORD}@localhost:1521/orcl
+      service:
+        pipelines:
+          metrics:
+            receivers: [oracledb]
+    should_fire: true
+    apply_contains:
+      - "P2-38 v0.155"
+
+  - name: "fires for named oracledb instance"
+    config: |
+      receivers:
+        oracledb/prod:
+          endpoint: oracle://user:pass@oracle-host:1521/PROD
+    should_fire: true
+
+  - name: "silent when no oracledb receiver"
+    config: |
+      receivers:
+        otlp:
+          protocols:
+            grpc: {}
+    should_fire: false

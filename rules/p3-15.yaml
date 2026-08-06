@@ -1,0 +1,57 @@
+id: P3-15
+category: p3
+introduced: "0.154"
+title: "resourcedetection Processor — k8snode Detector Deprecated, Renamed to k8s_api"
+look_for:
+  - path: $.processors.resource_detection
+    match: exists
+  - raw_pattern: "(?m)\\bk8snode\\b"
+logic: and
+migration:
+  strategy: auto
+  key_moves:
+    # Rename the k8snode detector entry in the detectors list.
+    - sequence_path: $.processors.resource_detection.detectors
+      old_value: k8snode
+      new_value: k8s_api
+    # Rename the k8snode: config sub-key to k8s_api: under the resource_detection processor.
+    - from: $.processors.resource_detection.k8snode
+      to: $.processors.resource_detection.k8s_api
+    # Also handle resourcedetection (old alias still in use if not yet migrated by P3-01)
+    - sequence_path: $.processors.resourcedetection.detectors
+      old_value: k8snode
+      new_value: k8s_api
+    - from: $.processors.resourcedetection.k8snode
+      to: $.processors.resourcedetection.k8s_api
+    - comment_path: $.processors.resource_detection
+      comment_once: true
+      comment_text: |
+        # [P3-15 UPGRADE v0.154] k8snode detector renamed to k8s_api.
+        # Both names produce identical output. The k8snode alias will be removed in a future release.
+        # Also renamed config sub-key: k8snode: → k8s_api: under this processor.
+  before: |
+    processors:
+      resource_detection:
+        detectors: [env, k8snode]
+        k8snode:
+          node_from_env_var: K8S_NODE_NAME
+  after: |
+    processors:
+      resource_detection:
+        detectors: [env, k8s_api]
+        k8s_api:
+          node_from_env_var: K8S_NODE_NAME
+guidance: |
+  Rename the k8snode detector to k8s_api in the resource_detection processor:
+  1. In the detectors: list, replace k8snode with k8s_api.
+  2. If a k8snode: sub-key exists in the processor config, rename it to k8s_api:.
+     Keeping the old key name under the new detector name applies defaults silently.
+
+  Both names currently produce identical output. The k8snode alias will be removed in
+  a future release.
+description: >-
+  In 0.154, the k8snode detector in the resource_detection (formerly resourcedetection)
+  processor was deprecated and renamed to k8s_api. Both names produce identical output.
+  The engine automatically renames k8snode to k8s_api in the detectors list and renames
+  the k8snode: config sub-key to k8s_api:. Rename now to avoid a future startup failure
+  when the k8snode alias is removed.

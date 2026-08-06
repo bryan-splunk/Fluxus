@@ -1,0 +1,55 @@
+cases:
+  - name: "fires when smartagent receiver has type jmx monitor"
+    config: |
+      extensions:
+        smartagent:
+          bundleDir: /usr/lib/splunk-otel-collector/agent-bundle
+      receivers:
+        smartagent:
+          monitors:
+            - type: jmx
+              host: localhost
+              port: 1099
+              serviceURL: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
+      service:
+        extensions: [smartagent]
+    should_fire: true
+    apply_contains:
+      - "P1-28 UPGRADE v0.154"
+
+  - name: "fires when multiple monitors include jmx"
+    config: |
+      receivers:
+        smartagent:
+          monitors:
+            - type: cpu
+            - type: jmx
+              host: localhost
+              port: 1099
+      service:
+        pipelines:
+          metrics:
+            receivers: [smartagent]
+    should_fire: true
+
+  - name: "silent when smartagent has no jmx monitor"
+    config: |
+      receivers:
+        smartagent:
+          monitors:
+            - type: cpu
+            - type: memory
+      service:
+        pipelines:
+          metrics:
+            receivers: [smartagent]
+    should_fire: false
+
+  - name: "silent when no smartagent receiver"
+    config: |
+      receivers:
+        jmx:
+          jar_path: /opt/opentelemetry-java-contrib-jmx-metrics.jar
+          endpoint: service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi
+          target_system: jvm
+    should_fire: false

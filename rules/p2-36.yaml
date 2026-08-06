@@ -1,0 +1,52 @@
+id: P2-36
+category: p2
+introduced: "0.154"
+title: "kafka Receiver — group_rebalance_strategy Deprecated in Favor of group_rebalance_strategies"
+look_for:
+  - path: $.receivers.kafka.group_rebalance_strategy
+    match: exists
+  - path: $.receivers.kafka.group_rebalance_strategy
+    match: exists
+    in_comments: true
+migration:
+  strategy: guided
+  key_moves:
+    # Inject a comment on the kafka receiver so the user knows to rename and wrap the value.
+    - comment_path: $.receivers.kafka
+      comment_once: true
+      comment_text: |
+        # UPGRADE(P2-36 v0.154): group_rebalance_strategy deprecated → group_rebalance_strategies.
+        # ACTION: Rename group_rebalance_strategy: to group_rebalance_strategies: and wrap the
+        # value in a YAML sequence. Example: group_rebalance_strategies: [sticky]
+        # Setting both fields simultaneously causes a startup validation failure.
+  before: |
+    receivers:
+      kafka:
+        brokers: [kafka:9092]
+        topic: otel-metrics
+        group_rebalance_strategy: sticky
+  after: |
+    receivers:
+      kafka:
+        brokers: [kafka:9092]
+        topic: otel-metrics
+        group_rebalance_strategies:
+          - sticky
+guidance: |
+  Rename group_rebalance_strategy: to group_rebalance_strategies: and wrap its value in a
+  YAML sequence (list with a single item).
+
+  The two fields are mutually exclusive — setting both causes a validation failure at startup.
+  The singular group_rebalance_strategy field is still accepted as a deprecated alias but
+  logs a warning on every startup. Migrate to the plural form to silence the warning.
+
+  If you need to specify multiple ordered protocols (the new capability), list them:
+    group_rebalance_strategies:
+      - sticky
+      - roundrobin
+description: >-
+  The group_rebalance_strategy field in the kafka receiver was deprecated in 0.154 in favor
+  of group_rebalance_strategies, which accepts a list of one or more ordered rebalance protocols.
+  The old singular field still works but logs a deprecation warning on startup. Setting both
+  fields simultaneously causes a validation failure. The engine automatically renames the field
+  and wraps its value in a list.
